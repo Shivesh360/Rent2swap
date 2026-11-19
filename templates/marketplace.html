@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+{% from "partials/_listing_card.html" import render_listing_card %}
+
+{% block title %}Explore Campus Marketplace - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2 r2m-page" id="marketplace-page">
+
+  <!-- Marketplace Header & Controls -->
+  <div class="r2m-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold text-white mb-1">Explore Campus <span class="r2s-gradient-text">Marketplace</span></h2>
+      <p class="text-secondary small mb-0">
+        Discover textbooks, electronics, cycles, lab gear &amp; essentials from verified college peers.
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="r2m-count-pill" id="marketplace-count-badge" aria-live="polite">
+        <i class="bi bi-box-seam" aria-hidden="true"></i>
+        <span>{{ total_count }} Listing{{ 's' if total_count != 1 else '' }} Available</span>
+      </span>
+      <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary">
+        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i> Post Gear
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4 align-items-start">
+    <!-- Left Sidebar / Mobile Slide-Over Offcanvas Drawer (< 768px) -->
+    <div class="col-md-4 col-lg-3">
+      <div class="offcanvas-md offcanvas-start r2m-filter-offcanvas" tabindex="-1" id="marketplaceFiltersDrawer" aria-labelledby="marketplaceFiltersDrawerLabel">
+        <div class="offcanvas-header d-md-none r2m-offcanvas-head">
+          <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2" id="marketplaceFiltersDrawerLabel">
+            <span class="r2x-filter-ico" aria-hidden="true"><i class="bi bi-sliders"></i></span>
+            <span>Filter Catalog</span>
+          </h5>
+          <button type="button" class="btn-close r2m-offcanvas-close" data-bs-dismiss="offcanvas" data-bs-target="#marketplaceFiltersDrawer" aria-label="Close filters"></button>
+        </div>
+
+        <div class="offcanvas-body p-0 d-block">
+          <div class="r2x-filter" id="filter-sidebar">
+            <div class="r2x-filter-inner">
+              <div class="r2x-filter-head">
+                <h6 class="r2x-filter-title">
+                  <span class="r2x-filter-ico" aria-hidden="true">
+                    <i class="bi bi-sliders"></i>
+                  </span>
+                  <span>Filter Catalog</span>
+                </h6>
+                <a href="{{ url_for('marketplace') }}" class="r2x-filter-reset" id="btn-reset-filters">
+                  Clear Filters
+                </a>
+              </div>
+
+              <form action="{{ url_for('marketplace') }}" method="GET" id="filter-form">
+                <input type="hidden" name="q" id="filter-q" value="{{ filters.q }}">
+
+                <!-- 1. Deal Type (Animated Segmented Switch) -->
+                <div class="r2x-filter-group">
+                  <span class="r2x-filter-lbl">Deal Type</span>
+                  <input type="hidden" name="type" id="filter-type" value="{{ filters.type or 'All' }}">
+                  <div class="r2x-seg" data-active="{{ filters.type or 'All' }}" role="group" aria-label="Filter by deal type">
+                    <span class="r2x-seg-glider" aria-hidden="true"></span>
+                    <button type="button" class="r2x-seg-btn {% if not filters.type or filters.type == 'All' %}is-active{% endif %}" data-value="All" aria-pressed="{{ 'true' if (not filters.type or filters.type == 'All') else 'false' }}">All</button>
+                    <button type="button" class="r2x-seg-btn {% if filters.type == 'Rent' %}is-active{% endif %}" data-value="Rent" aria-pressed="{{ 'true' if filters.type == 'Rent' else 'false' }}">Rent</button>
+                    <button type="button" class="r2x-seg-btn {% if filters.type == 'Sell' %}is-active{% endif %}" data-value="Sell" aria-pressed="{{ 'true' if filters.type == 'Sell' else 'false' }}">Sell</button>
+                    <button type="button" class="r2x-seg-btn {% if filters.type == 'Exchange' %}is-active{% endif %}" data-value="Exchange" aria-pressed="{{ 'true' if filters.type == 'Exchange' else 'false' }}">Swap</button>
+                  </div>
+                </div>
+
+                <!-- 2. Category -->
+                <div class="r2x-filter-group">
+                  <label class="r2x-filter-lbl" for="filter-category">Category</label>
+                  <div class="r2x-field-box">
+                    <select name="category" id="filter-category" class="r2x-search-select">
+                      <option value="All" {% if not filters.category or filters.category == 'All' %}selected{% endif %}>All Categories</option>
+                      {% for c in categories %}
+                        <option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+
+                <!-- 3. Condition -->
+                <div class="r2x-filter-group">
+                  <label class="r2x-filter-lbl" for="filter-condition">Condition</label>
+                  <div class="r2x-field-box">
+                    <select name="condition" id="filter-condition" class="r2x-search-select">
+                      <option value="All" {% if not filters.condition or filters.condition == 'All' %}selected{% endif %}>Any Condition</option>
+                      {% for cond in conditions %}
+                        <option value="{{ cond }}" {% if filters.condition == cond %}selected{% endif %}>{{ cond }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+
+                <!-- 4. Price Range -->
+                <div class="r2x-filter-group">
+                  <span class="r2x-filter-lbl">Price / Rate Range</span>
+                  <div class="r2x-price-pair">
+                    <div class="r2x-field-box">
+                      <span class="r2x-price-prefix">₹</span>
+                      <input type="number" name="min_price" id="filter-min-price" class="r2x-price-input" placeholder="Min" min="0" value="{{ filters.min_price }}" aria-label="Minimum price">
+                    </div>
+                    <span class="r2x-price-sep">to</span>
+                    <div class="r2x-field-box">
+                      <span class="r2x-price-prefix">₹</span>
+                      <input type="number" name="max_price" id="filter-max-price" class="r2x-price-input" placeholder="Max" min="0" value="{{ filters.max_price }}" aria-label="Maximum price">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 5. Sort By -->
+                <div class="r2x-filter-group">
+                  <span class="r2x-filter-lbl">Sort By</span>
+                  <input type="hidden" name="sort" id="filter-sort" value="{{ filters.sort or 'newest' }}">
+                  <div class="r2x-sort-grid" role="group" aria-label="Sort listings">
+                    <button type="button" class="r2x-sort-btn {% if not filters.sort or filters.sort == 'newest' %}is-active{% endif %}" data-sort="newest" aria-pressed="{{ 'true' if (not filters.sort or filters.sort == 'newest') else 'false' }}">
+                      <i class="bi bi-clock" aria-hidden="true"></i><span>Latest</span>
+                    </button>
+                    <button type="button" class="r2x-sort-btn {% if filters.sort == 'oldest' %}is-active{% endif %}" data-sort="oldest" aria-pressed="{{ 'true' if filters.sort == 'oldest' else 'false' }}">
+                      <i class="bi bi-archive" aria-hidden="true"></i><span>Oldest</span>
+                    </button>
+                    <button type="button" class="r2x-sort-btn {% if filters.sort == 'price_asc' %}is-active{% endif %}" data-sort="price_asc" aria-pressed="{{ 'true' if filters.sort == 'price_asc' else 'false' }}">
+                      <i class="bi bi-arrow-up" aria-hidden="true"></i><span>Price: Low</span>
+                    </button>
+                    <button type="button" class="r2x-sort-btn {% if filters.sort == 'price_desc' %}is-active{% endif %}" data-sort="price_desc" aria-pressed="{{ 'true' if filters.sort == 'price_desc' else 'false' }}">
+                      <i class="bi bi-arrow-down" aria-hidden="true"></i><span>Price: High</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" class="r2x-search-btn r2x-filter-submit" id="apply-filters-btn">
+                  <span>Apply Filters</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14"></path>
+                    <path d="M13 6l6 6-6 6"></path>
+                  </svg>
+                </button>
+              </form>
+
+              <span class="r2x-filter-bar" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Area: Search, Active Tags & Listing Cards Grid -->
+    <div class="col-md-8 col-lg-9">
+
+      <!-- Top Classical Animated Search Bar (.r2x-search--inline) -->
+      <div class="mb-3" id="marketplace-search-container">
+        <form action="{{ url_for('marketplace') }}" method="GET" class="r2x-search r2x-search--inline" id="marketplace-search-form" role="search">
+          <input type="hidden" name="condition" id="search-condition-hidden" value="{{ filters.condition or 'All' }}">
+          <input type="hidden" name="city" id="search-city-hidden" value="{{ filters.city or 'All' }}">
+          <input type="hidden" name="min_price" id="search-min-price-hidden" value="{{ filters.min_price or '' }}">
+          <input type="hidden" name="max_price" id="search-max-price-hidden" value="{{ filters.max_price or '' }}">
+          <input type="hidden" name="sort" id="search-sort-hidden" value="{{ filters.sort or 'newest' }}">
+
+          <div class="r2x-search-inner">
+            <div class="r2x-search-main">
+              <span class="r2x-search-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+              </span>
+              <div class="r2x-search-field">
+                <input type="text" name="q" class="r2x-search-input" placeholder="Search gear, textbooks, cameras, cycles..." aria-label="Search marketplace items" id="marketplace-search-input" value="{{ filters.q }}" autocomplete="off">
+                <button type="button" class="r2x-search-clear" aria-label="Clear search">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="r2x-search-filters">
+              <div class="r2x-search-filter">
+                <span class="r2x-search-filter-lbl">Cat</span>
+                <select name="category" class="r2x-search-select" aria-label="Select Category" id="marketplace-category-select">
+                  <option value="All" {% if not filters.category or filters.category == 'All' %}selected{% endif %}>All Categories</option>
+                  {% for c in categories %}
+                    <option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <span class="r2x-search-div" aria-hidden="true"></span>
+              <div class="r2x-search-filter">
+                <span class="r2x-search-filter-lbl">Deal</span>
+                <select name="type" class="r2x-search-select" aria-label="Select Deal Type" id="marketplace-type-select">
+                  <option value="All" {% if not filters.type or filters.type == 'All' %}selected{% endif %}>All Deals</option>
+                  {% for t in transaction_types %}
+                    <option value="{{ t }}" {% if filters.type == t %}selected{% endif %}>
+                      {% if t == 'Exchange' %}Swap{% elif t == 'Rent' %}Rent{% else %}Sell{% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="r2x-search-btn" id="marketplace-search-btn">
+              <span>Search</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14"></path>
+                <path d="M13 6l6 6-6 6"></path>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Mobile Filter Trigger + Quick Sort Bar (< 768px) -->
+      {% set active_filter_count = (1 if filters.q else 0) + (1 if (filters.category and filters.category != 'All') else 0) + (1 if (filters.type and filters.type != 'All') else 0) + (1 if (filters.condition and filters.condition != 'All') else 0) + (1 if (filters.min_price or filters.max_price) else 0) + (1 if (filters.city and filters.city != 'All') else 0) %}
+      <div class="r2m-mobile-bar d-flex d-md-none align-items-center gap-2 mb-3">
+        <button
+          type="button"
+          class="r2m-mobile-filter-btn"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#marketplaceFiltersDrawer"
+          aria-controls="marketplaceFiltersDrawer"
+          id="mobile-filters-trigger">
+          <i class="bi bi-sliders" aria-hidden="true"></i>
+          <span>Filters</span>
+          {% if active_filter_count > 0 %}
+            <span class="r2m-filter-count">{{ active_filter_count }}</span>
+          {% endif %}
+        </button>
+
+        <div class="r2m-mobile-sort-wrap ms-auto">
+          <label for="mobile-sort-select" class="visually-hidden">Sort listings</label>
+          <select id="mobile-sort-select" class="r2m-mobile-sort-select" aria-label="Sort listings">
+            <option value="newest" {% if not filters.sort or filters.sort == 'newest' %}selected{% endif %}>Sort: Latest</option>
+            <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+            <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+            <option value="oldest" {% if filters.sort == 'oldest' %}selected{% endif %}>Sort: Oldest</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Removable Active Filter Tags Strip -->
+      <div id="marketplace-active-strip">
+        {% if active_filter_count > 0 or (filters.sort and filters.sort != 'newest') %}
+          <div class="r2m-active-bar mb-3">
+            <span class="r2m-active-lbl">Active:</span>
+
+            {% if filters.q %}
+              <button type="button" class="r2m-active-chip" data-clear-param="q" title="Remove search query">
+                <span>&ldquo;{{ filters.q }}&rdquo;</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.type and filters.type != 'All' %}
+              <button type="button" class="r2m-active-chip" data-clear-param="type" title="Remove deal type filter">
+                <span>{% if filters.type == 'Exchange' %}Swap{% else %}{{ filters.type }}{% endif %}</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.category and filters.category != 'All' %}
+              <button type="button" class="r2m-active-chip" data-clear-param="category" title="Remove category filter">
+                <span>{{ filters.category }}</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.condition and filters.condition != 'All' %}
+              <button type="button" class="r2m-active-chip" data-clear-param="condition" title="Remove condition filter">
+                <span>{{ filters.condition }}</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.city and filters.city != 'All' %}
+              <button type="button" class="r2m-active-chip" data-clear-param="city" title="Remove city filter">
+                <span>{{ filters.city }}</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.min_price or filters.max_price %}
+              <button type="button" class="r2m-active-chip" data-clear-param="price" title="Remove price filter">
+                <span>₹{{ filters.min_price or '0' }} – ₹{{ filters.max_price or 'Any' }}</span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            {% if filters.sort and filters.sort != 'newest' %}
+              <button type="button" class="r2m-active-chip" data-clear-param="sort" title="Reset sort order">
+                <span>
+                  {% if filters.sort == 'price_asc' %}Price: Low to High
+                  {% elif filters.sort == 'price_desc' %}Price: High to Low
+                  {% elif filters.sort == 'oldest' %}Oldest{% endif %}
+                </span>
+                <i class="bi bi-x" aria-hidden="true"></i>
+              </button>
+            {% endif %}
+
+            <a href="{{ url_for('marketplace') }}" class="r2m-clear-link ms-auto" id="clear-all-filters-btn">
+              <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear Filters
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Loading Skeletons (Visible during live filter updates) -->
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3 g-lg-4 d-none" id="marketplace-skeleton-grid" aria-hidden="true">
+        {% for _sk in range(6) %}
+          <div class="col">
+            <div class="r2l-skeleton-card h-100">
+              <div class="r2l-skeleton-media"></div>
+              <div class="r2l-skeleton-body">
+                <div class="r2l-skeleton-line w-40"></div>
+                <div class="r2l-skeleton-line w-85 h-lg"></div>
+                <div class="r2l-skeleton-line w-70"></div>
+                <div class="r2l-skeleton-footer">
+                  <div class="r2l-skeleton-line w-35"></div>
+                  <div class="r2l-skeleton-pill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Listings Results Region (Swapped cleanly on filter / search) -->
+      <div id="marketplace-results-region" class="r2m-results-region">
+        {% if items %}
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3 g-lg-4" id="marketplace-grid">
+            {% for item in items %}
+              <div class="col">
+                {{ render_listing_card(item, card_prefix='item-card', btn_prefix='item-view', compact=false, index=loop.index0) }}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <!-- Empty State -->
+          <div class="r2m-empty-state text-center my-3" id="marketplace-empty-state">
+            <div class="r2m-empty-icon mx-auto mb-3">
+              <i class="bi bi-search" aria-hidden="true"></i>
+            </div>
+            <h4 class="fw-bold mb-2">No matching campus gear found</h4>
+            <p class="text-secondary small mx-auto mb-4" style="max-width: 460px;">
+              We couldn't find any student items matching your active filters. Try widening your price range, clearing filters, or browsing another deal type.
+            </p>
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+              <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline px-3" id="empty-clear-filters-btn">
+                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Clear Filters
+              </a>
+              <a href="{{ url_for('marketplace', type='Rent') }}" class="btn btn-sm btn-r2s-outline px-3">
+                Browse Rentals
+              </a>
+              <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary px-3">
+                <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Post This Item
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/search-bar.js') }}"></script>
+{% endblock %}

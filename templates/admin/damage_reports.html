@@ -1,0 +1,106 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Damage Reports &amp; Disputes{% endblock %}
+
+{% block admin_content %}
+<div class="r2s-glass-card p-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h5 class="fw-bold text-white mb-1">Peer Damage Disputes &amp; Condition Claims ({{ reports|length }})</h5>
+      <p class="text-secondary small mb-0">Impartial campus mediation based on uploaded evidence. Arbitrary owner penalties are barred.</p>
+    </div>
+  </div>
+
+  {% if reports %}
+    <div class="d-flex flex-column gap-3">
+      {% for rep in reports %}
+        <div class="r2s-panel-box p-4">
+          <div class="row g-3">
+            <!-- Left Info -->
+            <div class="col-lg-8">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge-r2s badge-r2s-rent py-0 px-2">Dispute #{{ rep.report_id }}</span>
+                <span class="badge-r2s {% if rep.severity == 'Minor' %}badge-r2s-swap{% else %}badge-r2s-rent{% endif %}">
+                  Severity: {{ rep.severity }}
+                </span>
+                <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1">
+                  Status: {{ rep.status }}
+                </span>
+              </div>
+
+              <h5 class="fw-bold text-white mb-1">
+                Item: {{ rep.item_title }} (Rental #{{ rep.rental_id }})
+              </h5>
+
+              <div class="small text-secondary mb-3">
+                Reported by: <strong class="text-white">{{ rep.reporter_name }}</strong> &bull; 
+                Lender: {{ rep.owner_name }} &bull; Borrower: {{ rep.renter_name }} &bull; 
+                Filed: {{ rep.created_at[:16] if rep.created_at else '' }}
+              </div>
+
+              <!-- Evidence & Description -->
+              <div class="p-3 rounded-3 mb-3 small" style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(168, 85, 247, 0.2);">
+                <strong class="text-white d-block mb-1">Reported Damage Observation:</strong>
+                <p class="text-secondary mb-0">{{ rep.description }}</p>
+              </div>
+
+              {% if rep.photo_path %}
+                <div class="mb-3">
+                  <span class="small text-secondary d-block mb-1 fw-semibold"><i class="bi bi-camera me-1"></i>Attached Photographic Evidence:</span>
+                  <a href="{{ url_for('serve_damage_report_photo', report_id=rep.report_id) }}" target="_blank" rel="noopener">
+                    <img src="{{ url_for('serve_damage_report_photo', report_id=rep.report_id) }}" alt="Damage Evidence" class="rounded border" style="max-height: 120px; object-fit: cover; border-color: rgba(168, 85, 247, 0.3) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  </a>
+                </div>
+              {% endif %}
+
+              {% if rep.admin_remark %}
+                <div class="p-2.5 rounded-3 small" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);">
+                  <strong class="text-success d-block mb-0.5"><i class="bi bi-shield-check me-1"></i>Staff Decision / Mediation Note:</strong>
+                  <span class="text-white">{{ rep.admin_remark }}</span>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Right Resolution Box -->
+            <div class="col-lg-4 border-start-lg pt-3 pt-lg-0" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+              <h6 class="fw-bold text-white mb-2"><i class="bi bi-sliders me-1 text-primary-light"></i>Staff Resolution</h6>
+              
+              <form action="{{ url_for('admin_resolve_damage_report', report_id=rep.report_id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                  <label class="form-label text-secondary small mb-1">Mediation Verdict</label>
+                  <select name="status" class="form-select form-select-sm r2s-input" required>
+                    <option value="Under Review" {% if rep.status == 'Under Review' %}selected{% endif %}>Under Review</option>
+                    <option value="Resolved — No Penalty" {% if rep.status == 'Resolved — No Penalty' %}selected{% endif %}>Resolved — No Penalty (Normal Wear)</option>
+                    <option value="Resolved — Penalty Applicable" {% if rep.status == 'Resolved — Penalty Applicable' %}selected{% endif %}>Resolved — Penalty Applicable (Repair Cost)</option>
+                    <option value="Rejected" {% if rep.status == 'Rejected' %}selected{% endif %}>Rejected (Invalid Claim)</option>
+                    <option value="Escalated" {% if rep.status == 'Escalated' %}selected{% endif %}>Escalated to Campus Dean</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label text-secondary small mb-1">Admin Remark / Reason</label>
+                  <textarea name="admin_remark" rows="2" class="form-control form-control-sm r2s-input" placeholder="Explain findings and resolution..." required>{{ rep.admin_remark or '' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-r2s-primary w-100">
+                  <i class="bi bi-check2-circle me-1"></i> Update Verdict
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5 text-secondary">
+      <i class="bi bi-shield-check fs-1 d-block mb-2 text-success"></i>
+      Zero open damage disputes on campus! All student handovers are peaceful.
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

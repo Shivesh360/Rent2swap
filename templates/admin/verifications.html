@@ -1,0 +1,419 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Verification Queue &amp; Student IDs{% endblock %}
+
+{% block admin_content %}
+<div class="r2s-glass-card p-4">
+
+  <!-- Header & Status Filter -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h5 class="fw-bold text-white mb-1">Student Verification Requests ({{ verifications|length }})</h5>
+      <p class="text-secondary small mb-0">
+        Inspect both College ID Front and Back images via short-lived private signed URLs before approving, rejecting, or revoking privileges.
+      </p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('admin_verifications', status='Pending') }}" class="btn btn-sm {% if status_filter == 'Pending' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Pending ({{ counts.pending }})
+      </a>
+      <a href="{{ url_for('admin_verifications', status='Verified') }}" class="btn btn-sm {% if status_filter == 'Verified' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Verified ({{ counts.verified }})
+      </a>
+      <a href="{{ url_for('admin_verifications', status='Rejected') }}" class="btn btn-sm {% if status_filter == 'Rejected' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Rejected ({{ counts.rejected }})
+      </a>
+      <a href="{{ url_for('admin_verifications', status='Not Submitted') }}" class="btn btn-sm {% if status_filter == 'Not Submitted' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Not Submitted ({{ counts.not_submitted }})
+      </a>
+      <a href="{{ url_for('admin_verifications', status='All') }}" class="btn btn-sm {% if status_filter == 'All' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        All
+      </a>
+    </div>
+  </div>
+
+  <!-- Verification Cards Grid -->
+  {% if verifications %}
+    <div class="row row-cols-1 row-cols-md-2 g-3">
+      {% for v in verifications %}
+        <div class="col">
+          <div class="p-3 r2s-panel-box h-100 d-flex flex-column justify-content-between" id="verif-card-{{ v.user_id }}">
+            <div>
+              <!-- Header Row -->
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="r2s-brand-logo-icon" style="width: 42px; height: 42px; border-radius: 12px; font-weight: 700;">
+                    {{ v.name[0] | upper }}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-white mb-0">{{ v.name }}</h6>
+                    <span class="small text-secondary">{{ v.email }}</span>
+                  </div>
+                </div>
+
+                <!-- Status Badge -->
+                {% if v.verification_status == 'Verified' %}
+                  <span class="badge-r2s badge-r2s-verified"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>
+                {% elif v.verification_status == 'Rejected' %}
+                  <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                {% elif v.verification_status == 'Pending' %}
+                  <span class="badge-r2s badge-r2s-swap"><i class="bi bi-clock-history me-1"></i>Pending Review</span>
+                {% else %}
+                  <span class="badge-r2s badge-status-inactive"><i class="bi bi-shield-exclamation me-1"></i>Not Submitted</span>
+                {% endif %}
+              </div>
+
+              <!-- Student Academic Details -->
+              <div class="p-2.5 rounded-3 mb-3 small" style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(168, 85, 247, 0.2);">
+                <div class="row g-1">
+                  <div class="col-6"><span class="text-secondary">College:</span> <strong class="text-white d-block text-truncate">{{ v.college or 'N/A' }}</strong></div>
+                  <div class="col-6"><span class="text-secondary">Branch:</span> <strong class="text-white d-block text-truncate">{{ v.course or v.branch or 'N/A' }}</strong></div>
+                  <div class="col-6"><span class="text-secondary">Roll / Enrollment:</span> <strong class="text-warning d-block">{{ v.enrollment_no or 'Not Provided' }}</strong></div>
+                  <div class="col-6"><span class="text-secondary">Phone:</span> <strong class="text-white d-block">{{ v.phone or 'Not Provided' }}</strong></div>
+                </div>
+              </div>
+
+              <!-- ID Card Documents Preview (Front and Back via Private Signed URLs) -->
+              {% set front_doc = v.front_doc %}
+              {% set back_doc = v.back_doc %}
+              <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1.5">
+                  <span class="small text-secondary"><i class="bi bi-file-earmark-person me-1"></i>College ID Documents:</span>
+                  <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small" style="color: var(--r2s-primary-light);" data-bs-toggle="modal" data-bs-target="#inspectModal-{{ v.user_id }}">
+                    <i class="bi bi-arrows-fullscreen me-1"></i>Inspect IDs &amp; History
+                  </button>
+                </div>
+
+                <div class="row g-2">
+                  <!-- Front Side Review -->
+                  <div class="col-6">
+                    <div class="p-2 rounded-2 border text-center h-100 d-flex flex-column justify-content-between" style="background: rgba(124, 58, 237, 0.08); border-color: rgba(168, 85, 247, 0.25) !important;">
+                      <span class="small text-white fw-semibold d-block mb-1" style="font-size: 0.75rem;">College ID Front</span>
+                      {% if front_doc and front_doc.status == 'ok' and front_doc.view_url %}
+                        {% if front_doc.is_pdf %}
+                          <a href="{{ front_doc.view_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-r2s-outline py-1 px-2 d-inline-flex align-items-center gap-1 mx-auto my-auto" style="font-size: 0.75rem;">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Open Front PDF
+                          </a>
+                        {% else %}
+                          <button type="button" class="btn btn-link p-0 d-inline-block position-relative text-decoration-none border-0 bg-transparent" data-zoom-url="{{ front_doc.view_url }}" data-zoom-title="College ID Front — {{ v.name }}" title="Click to enlarge College ID Front">
+                            <img src="{{ front_doc.view_url }}" alt="College ID Front" class="rounded border" style="max-height: 95px; max-width: 100%; object-fit: contain; border-color: rgba(168, 85, 247, 0.3) !important;" onerror="this.classList.add('d-none'); const msg = this.parentElement.querySelector('.doc-load-err'); if (msg) msg.classList.remove('d-none');">
+                            <div class="doc-load-err d-none small text-danger py-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Image failed to load</div>
+                            <div class="small text-secondary mt-0.5" style="font-size: 0.68rem;"><i class="bi bi-zoom-in me-0.5"></i>Click to enlarge</div>
+                          </button>
+                        {% endif %}
+                      {% elif front_doc and front_doc.status == 'missing' %}
+                        <div class="small text-warning my-auto px-1" style="font-size: 0.72rem;">
+                          <i class="bi bi-exclamation-triangle-fill d-block fs-6 mb-1"></i>
+                          {{ front_doc.error }}
+                        </div>
+                      {% else %}
+                        <div class="small text-muted my-auto"><i class="bi bi-dash-circle me-1"></i>Not uploaded</div>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <!-- Back Side Review -->
+                  <div class="col-6">
+                    <div class="p-2 rounded-2 border text-center h-100 d-flex flex-column justify-content-between" style="background: rgba(124, 58, 237, 0.08); border-color: rgba(168, 85, 247, 0.25) !important;">
+                      <span class="small text-white fw-semibold d-block mb-1" style="font-size: 0.75rem;">College ID Back</span>
+                      {% if back_doc and back_doc.status == 'ok' and back_doc.view_url %}
+                        {% if back_doc.is_pdf %}
+                          <a href="{{ back_doc.view_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-r2s-outline py-1 px-2 d-inline-flex align-items-center gap-1 mx-auto my-auto" style="font-size: 0.75rem;">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Open Back PDF
+                          </a>
+                        {% else %}
+                          <button type="button" class="btn btn-link p-0 d-inline-block position-relative text-decoration-none border-0 bg-transparent" data-zoom-url="{{ back_doc.view_url }}" data-zoom-title="College ID Back — {{ v.name }}" title="Click to enlarge College ID Back">
+                            <img src="{{ back_doc.view_url }}" alt="College ID Back" class="rounded border" style="max-height: 95px; max-width: 100%; object-fit: contain; border-color: rgba(168, 85, 247, 0.3) !important;" onerror="this.classList.add('d-none'); const msg = this.parentElement.querySelector('.doc-load-err'); if (msg) msg.classList.remove('d-none');">
+                            <div class="doc-load-err d-none small text-danger py-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Image failed to load</div>
+                            <div class="small text-secondary mt-0.5" style="font-size: 0.68rem;"><i class="bi bi-zoom-in me-0.5"></i>Click to enlarge</div>
+                          </button>
+                        {% endif %}
+                      {% elif back_doc and back_doc.status == 'missing' %}
+                        <div class="small text-warning my-auto px-1" style="font-size: 0.72rem;">
+                          <i class="bi bi-exclamation-triangle-fill d-block fs-6 mb-1"></i>
+                          {{ back_doc.error }}
+                        </div>
+                      {% else %}
+                        <div class="small text-muted my-auto"><i class="bi bi-dash-circle me-1"></i>Not uploaded</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Previous Rejection Reason if present -->
+              {% if v.verification_status == 'Rejected' and v.verification_rejection_reason %}
+                <div class="p-2 rounded-2 mb-3 small" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5;">
+                  <strong class="d-block"><i class="bi bi-exclamation-triangle me-1"></i>Rejection Reason:</strong>
+                  {{ v.verification_rejection_reason }}
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Action Controls -->
+            <div class="pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+              <span class="small text-muted" style="font-size: 0.74rem;">
+                {% if v.verified_at %}
+                  Approved: {{ v.verified_at[:10] }}
+                {% elif v.verification_submitted_at %}
+                  Submitted: {{ v.verification_submitted_at[:10] }}
+                {% else %}
+                  Registered: {{ v.created_at[:10] if v.created_at else '' }}
+                {% endif %}
+              </span>
+
+              <div class="d-flex gap-2">
+                {% if v.verification_status in ('Pending', 'Rejected') %}
+                  {% set docs_ready = (front_doc and front_doc.has_doc and back_doc and back_doc.has_doc) %}
+                  <form action="{{ url_for('admin_approve_verification', user_id=v.user_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3" {% if not docs_ready %}disabled title="Both College ID Front and Back must be present before approving"{% endif %}>
+                      <i class="bi bi-check-lg me-1"></i> Approve
+                    </button>
+                  </form>
+                {% endif %}
+
+                {% if v.verification_status == 'Verified' %}
+                  <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2.5" data-bs-toggle="modal" data-bs-target="#revokeModal-{{ v.user_id }}">
+                    <i class="bi bi-shield-x me-1"></i> Revoke
+                  </button>
+                {% elif v.verification_status == 'Pending' %}
+                  <button type="button" class="btn btn-sm btn-r2s-outline py-1 px-2.5 text-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-{{ v.user_id }}">
+                    <i class="bi bi-x-lg me-1"></i> Reject
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspect IDs & History Modal -->
+        <div class="modal fade" id="inspectModal-{{ v.user_id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content r2s-glass-panel text-white">
+              <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title fw-bold">
+                  <i class="bi bi-person-vcard text-primary-light me-2"></i>Verification Review: {{ v.name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2 small mb-3 p-3 rounded-3" style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(168, 85, 247, 0.25);">
+                  <div class="col-md-4"><span class="text-secondary">Email:</span> <strong class="text-white d-block">{{ v.email }}</strong></div>
+                  <div class="col-md-4"><span class="text-secondary">College:</span> <strong class="text-white d-block">{{ v.college or 'N/A' }}</strong></div>
+                  <div class="col-md-4"><span class="text-secondary">Roll / Enrollment:</span> <strong class="text-warning d-block">{{ v.enrollment_no or 'N/A' }}</strong></div>
+                  <div class="col-md-4"><span class="text-secondary">Course / Year:</span> <strong class="text-white d-block">{{ v.course or v.branch or 'N/A' }} ({{ v.year or 'N/A' }})</strong></div>
+                  <div class="col-md-4"><span class="text-secondary">Submitted At:</span> <strong class="text-white d-block">{{ (v.verification_submitted_at or 'N/A')[:16] }}</strong></div>
+                  <div class="col-md-4"><span class="text-secondary">Reviewed At:</span> <strong class="text-white d-block">{{ (v.verification_reviewed_at or 'Not yet')[:16] }}{% if v.reviewed_by_name %} by {{ v.reviewed_by_name }}{% endif %}</strong></div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                  <div class="col-md-6">
+                    <div class="p-3 rounded-3 border text-center h-100" style="background: rgba(15, 23, 42, 0.55); border-color: rgba(168, 85, 247, 0.3) !important;">
+                      <h6 class="fw-bold text-white mb-2">College ID Front</h6>
+                      {% if front_doc and front_doc.status == 'ok' and front_doc.view_url %}
+                        {% if front_doc.is_pdf %}
+                          <a href="{{ front_doc.view_url }}" target="_blank" rel="noopener" class="btn btn-r2s-primary btn-sm my-3">
+                            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Open Front PDF
+                          </a>
+                        {% else %}
+                          <a href="{{ front_doc.view_url }}" target="_blank" rel="noopener">
+                            <img src="{{ front_doc.view_url }}" alt="College ID Front Full" class="img-fluid rounded border" style="max-height: 280px; object-fit: contain;" onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
+                            <div class="d-none alert alert-danger small mt-2">Could not load College ID Front image from private storage.</div>
+                          </a>
+                        {% endif %}
+                      {% elif front_doc and front_doc.status == 'missing' %}
+                        <div class="alert alert-warning small mb-0">{{ front_doc.error }}</div>
+                      {% else %}
+                        <div class="text-muted small py-4">Not uploaded</div>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="p-3 rounded-3 border text-center h-100" style="background: rgba(15, 23, 42, 0.55); border-color: rgba(168, 85, 247, 0.3) !important;">
+                      <h6 class="fw-bold text-white mb-2">College ID Back</h6>
+                      {% if back_doc and back_doc.status == 'ok' and back_doc.view_url %}
+                        {% if back_doc.is_pdf %}
+                          <a href="{{ back_doc.view_url }}" target="_blank" rel="noopener" class="btn btn-r2s-primary btn-sm my-3">
+                            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Open Back PDF
+                          </a>
+                        {% else %}
+                          <a href="{{ back_doc.view_url }}" target="_blank" rel="noopener">
+                            <img src="{{ back_doc.view_url }}" alt="College ID Back Full" class="img-fluid rounded border" style="max-height: 280px; object-fit: contain;" onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
+                            <div class="d-none alert alert-danger small mt-2">Could not load College ID Back image from private storage.</div>
+                          </a>
+                        {% endif %}
+                      {% elif back_doc and back_doc.status == 'missing' %}
+                        <div class="alert alert-warning small mb-0">{{ back_doc.error }}</div>
+                      {% else %}
+                        <div class="text-muted small py-4">Not uploaded</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Verification Audit History -->
+                <h6 class="fw-bold text-white mb-2"><i class="bi bi-clock-history text-primary-light me-1"></i> Verification History</h6>
+                {% if v.history %}
+                  <div class="d-flex flex-column gap-2 small">
+                    {% for h in v.history %}
+                      <div class="p-2 rounded border border-secondary border-opacity-25 bg-dark bg-opacity-25">
+                        <div class="d-flex justify-content-between">
+                          <span><strong class="text-primary-light">{{ h.action_type }}</strong> &bull; {{ h.previous_status or 'Not Submitted' }} &rarr; {{ h.new_status }}</span>
+                          <span class="text-muted">{{ (h.reviewed_at or h.resubmitted_at or h.submitted_at or h.created_at or '')[:16] }}</span>
+                        </div>
+                        {% if h.rejection_reason %}<div class="text-danger mt-1">Reason: {{ h.rejection_reason }}</div>{% endif %}
+                        {% if h.notes %}<div class="text-secondary">{{ h.notes }}{% if h.reviewer_name %} ({{ h.reviewer_name }}){% endif %}</div>{% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-muted small">No verification history transitions logged yet.</div>
+                {% endif %}
+              </div>
+              <div class="modal-footer border-top border-secondary border-opacity-25">
+                <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rejection Modal (Pending only) -->
+        {% if v.verification_status == 'Pending' %}
+        <div class="modal fade" id="rejectModal-{{ v.user_id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content r2s-glass-card border" style="border-color: rgba(239, 68, 68, 0.35) !important;">
+              <div class="modal-header border-bottom" style="border-color: rgba(239, 68, 68, 0.2) !important;">
+                <h6 class="modal-title fw-bold text-white">
+                  <i class="bi bi-x-circle text-danger me-2"></i>Reject Verification - {{ v.name }}
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <form action="{{ url_for('admin_reject_verification', user_id=v.user_id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                  <p class="small text-secondary mb-3">
+                    Provide a clear mandatory rejection reason. This feedback will be shown to the student so they can fix their submission and resubmit.
+                  </p>
+                  <label for="reason-{{ v.user_id }}" class="form-label small text-white">Rejection Reason <span class="text-danger">*</span></label>
+                  <textarea name="rejection_reason" id="reason-{{ v.user_id }}" class="form-control r2s-input mb-2" rows="3" placeholder="e.g. College ID Back is blurry or unreadable. Please upload a clearer image." required></textarea>
+                  <div class="d-flex flex-wrap gap-1 mt-2">
+                    <button type="button" class="badge bg-secondary-subtle text-secondary small border" style="cursor: pointer;" data-reject-target="reason-{{ v.user_id }}" data-reject-reason="College ID Front or Back image is blurry or illegible. Please upload clear photos.">Blurry ID photo</button>
+                    <button type="button" class="badge bg-secondary-subtle text-secondary small border" style="cursor: pointer;" data-reject-target="reason-{{ v.user_id }}" data-reject-reason="Roll/enrollment number does not match the uploaded College ID card.">Roll mismatch</button>
+                    <button type="button" class="badge bg-secondary-subtle text-secondary small border" style="cursor: pointer;" data-reject-target="reason-{{ v.user_id }}" data-reject-reason="Student ID card appears expired. Please upload valid current semester proof.">Expired ID</button>
+                  </div>
+                </div>
+                <div class="modal-footer border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+                  <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-sm btn-danger px-3">
+                    <i class="bi bi-x-circle me-1"></i> Confirm Rejection
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Revoke Verification Modal (Verified only) -->
+        {% if v.verification_status == 'Verified' %}
+        <div class="modal fade" id="revokeModal-{{ v.user_id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content r2s-glass-card border" style="border-color: rgba(239, 68, 68, 0.4) !important;">
+              <div class="modal-header border-bottom" style="border-color: rgba(239, 68, 68, 0.2) !important;">
+                <h6 class="modal-title fw-bold text-white">
+                  <i class="bi bi-shield-x text-danger me-2"></i>Revoke Student Verification - {{ v.name }}
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <form action="{{ url_for('admin_revoke_verification', user_id=v.user_id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                  <p class="small text-secondary mb-3">
+                    Revoking immediately suspends verified marketplace privileges (listing creation, rentals, purchases, swaps) until the student re-submits valid ID proof.
+                  </p>
+                  <label for="revoke-reason-{{ v.user_id }}" class="form-label small text-white">Revocation Reason <span class="text-danger">*</span></label>
+                  <textarea name="revoke_reason" id="revoke-reason-{{ v.user_id }}" class="form-control r2s-input" rows="3" placeholder="Explain why this student verification is being revoked..." required></textarea>
+                </div>
+                <div class="modal-footer border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+                  <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-sm btn-danger px-3">
+                    <i class="bi bi-shield-x me-1"></i> Confirm Revocation
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5 text-secondary">
+      <i class="bi bi-shield-check fs-1 d-block mb-2 text-success"></i>
+      No student verification records found under this filter.
+    </div>
+  {% endif %}
+
+</div>
+
+<!-- Enlarged ID Image Zoom Lightbox Modal -->
+<div class="modal fade" id="idZoomLightboxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content r2s-glass-panel text-white">
+      <div class="modal-header border-bottom border-secondary border-opacity-25">
+        <h6 class="modal-title fw-bold" id="idZoomLightboxTitle">College ID Document</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <img id="idZoomLightboxImg" src="" alt="Enlarged ID Document" class="img-fluid rounded border" style="max-height: 70vh; object-fit: contain;">
+        <div id="idZoomLightboxErr" class="d-none alert alert-danger small mt-3">Unable to load image. The short-lived signed URL may have expired or the file is missing.</div>
+      </div>
+      <div class="modal-footer border-top border-secondary border-opacity-25">
+        <a id="idZoomLightboxOpenTab" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-r2s-primary">
+          <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+        </a>
+        <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openIdZoomModal(imgUrl, titleText) {
+  const modalEl = document.getElementById('idZoomLightboxModal');
+  const imgEl = document.getElementById('idZoomLightboxImg');
+  const errEl = document.getElementById('idZoomLightboxErr');
+  const titleEl = document.getElementById('idZoomLightboxTitle');
+  const tabLink = document.getElementById('idZoomLightboxOpenTab');
+  if (!modalEl || !imgEl) return;
+
+  titleEl.textContent = titleText || 'College ID Document';
+  errEl.classList.add('d-none');
+  imgEl.classList.remove('d-none');
+  imgEl.onerror = function() {
+    imgEl.classList.add('d-none');
+    errEl.classList.remove('d-none');
+  };
+  imgEl.src = imgUrl;
+  if (tabLink) tabLink.href = imgUrl;
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+}
+
+document.addEventListener('click', function(e) {
+  const zoomBtn = e.target.closest && e.target.closest('[data-zoom-url]');
+  if (zoomBtn) {
+    openIdZoomModal(zoomBtn.getAttribute('data-zoom-url'), zoomBtn.getAttribute('data-zoom-title'));
+    return;
+  }
+  const rejectPreset = e.target.closest && e.target.closest('[data-reject-target]');
+  if (rejectPreset) {
+    const target = document.getElementById(rejectPreset.getAttribute('data-reject-target'));
+    if (target) target.value = rejectPreset.getAttribute('data-reject-reason') || '';
+  }
+});
+</script>
+{% endblock %}

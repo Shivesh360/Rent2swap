@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_tools" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="180" fill="url(#grad_tools)" />
+  <g transform="translate(0, -5)">
+    <path d="M60 130 L110 80 L125 95 L75 145 Z" fill="#fb923c"/><path d="M105 85 L125 65 C135 55 150 55 155 65 C160 70 160 85 150 95 L130 115 Z" fill="#c2410c"/><circle cx="145" cy="75" r="5" fill="#ffffff"/>
+  </g>
+  <text x="100" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">Tools & Equipment</text>
+</svg>

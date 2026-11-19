@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}AI Smart Recommendations - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-3" id="ai-recommendations-page">
+
+  <!-- Header Section -->
+  <div class="text-center mx-auto mb-4" style="max-width: 760px;">
+    <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill mb-2" style="background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236, 72, 153, 0.4); color: #f472b6; font-size: 0.85rem;">
+      <i class="bi bi-magic text-warning"></i> Personalized Student Intelligence
+    </div>
+    <h2 class="fw-bold text-white mb-2">Campus <span class="r2s-gradient-text">Recommendations</span></h2>
+    <p class="text-secondary small">
+      Curated gear recommendations based on campus semester cycles, peer trust ratings, and rental affordability.
+    </p>
+  </div>
+
+  <!-- Section 1: Recommended for You (Curated Picks) -->
+  <div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-star-fill text-warning"></i>
+          <span>{% if user %}Handpicked for {{ user.name }}{% else %}Popular Student Highlights{% endif %}</span>
+        </h5>
+        <p class="text-secondary small mb-0">High-reputation listings with verified peer trust.</p>
+      </div>
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline">Explore All</a>
+    </div>
+
+    {% if recommended_for_you %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+        {% for it in recommended_for_you %}
+          <div class="col">
+            <div class="r2s-listing-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="position-relative overflow-hidden" style="height: 160px;">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="position-absolute top-0 start-0 m-2">
+                    <span class="badge-r2s badge-r2s-rent">{{ it.transaction_type }}</span>
+                  </div>
+                </div>
+                <div class="p-3">
+                  <span class="badge-r2s badge-r2s-verified mb-2" style="font-size: 0.68rem;">
+                    <i class="bi bi-stars text-warning me-1"></i>High Peer Trust ({{ "%.1f"|format(it.seller_rating or 5.0) }}★)
+                  </span>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ it.title }}">
+                    <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="text-white text-decoration-none">
+                      {{ it.title }}
+                    </a>
+                  </h6>
+                  <div class="d-flex justify-content-between align-items-center small">
+                    <span class="text-success fw-bold">
+                      {% if it.transaction_type == 'Rent' %}₹{{ "{:,.0f}".format(it.rent_amount) }}/{{ it.rent_period or 'Day' }}{% elif it.transaction_type == 'Sell' %}₹{{ "{:,.0f}".format(it.price) }}{% else %}Swap{% endif %}
+                    </span>
+                    <span class="text-secondary">{{ it.city }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 pt-0">
+                <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="btn btn-sm btn-r2s-primary w-100 py-1">
+                  View Item &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Section 2: Best Campus Rental Deals -->
+  <div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-clock-history text-success"></i>
+          <span>Best Rental Values for Semester Needs</span>
+        </h5>
+        <p class="text-secondary small mb-0">Affordable daily &amp; weekly rentals for academic labs, trips, and projects.</p>
+      </div>
+      <a href="{{ url_for('marketplace', type='Rent') }}" class="btn btn-sm btn-r2s-outline">All Rentals</a>
+    </div>
+
+    {% if rental_deals %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+        {% for it in rental_deals %}
+          <div class="col">
+            <div class="r2s-listing-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="position-relative overflow-hidden" style="height: 160px;">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="position-absolute top-0 start-0 m-2">
+                    <span class="badge-r2s badge-r2s-rent">Rent</span>
+                  </div>
+                </div>
+                <div class="p-3">
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
+                  <p class="text-secondary small mb-2 text-truncate" style="font-size: 0.75rem;">{{ it.description }}</p>
+                  <div class="d-flex justify-content-between align-items-center small">
+                    <span class="text-success fw-bold">₹{{ "{:,.0f}".format(it.rent_amount) }}/{{ it.rent_period or 'Day' }}</span>
+                    <span class="badge-r2s badge-r2s-swap py-0 px-2" style="font-size: 0.65rem;">Top Value</span>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 pt-0">
+                <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="btn btn-sm btn-r2s-primary w-100 py-1">
+                  Rent Now &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Section 3: Popular Exchange & Barter Gear -->
+  <div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-arrow-left-right text-info"></i>
+          <span>Active Swap Wishlists</span>
+        </h5>
+        <p class="text-secondary small mb-0">Students willing to barter instead of buying new.</p>
+      </div>
+      <a href="{{ url_for('ai_matching') }}" class="btn btn-sm btn-r2s-outline">Smart Barter Matcher</a>
+    </div>
+
+    {% if swap_picks %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+        {% for it in swap_picks %}
+          <div class="col">
+            <div class="r2s-listing-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="position-relative overflow-hidden" style="height: 160px;">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="position-absolute top-0 start-0 m-2">
+                    <span class="badge-r2s badge-r2s-swap">Swap</span>
+                  </div>
+                </div>
+                <div class="p-3">
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
+                  <div class="small text-secondary mb-2" style="font-size: 0.75rem;">
+                    Seeking: <strong class="text-white text-truncate d-inline-block align-bottom" style="max-width: 140px;">{{ it.exchange_preference or 'Open to offers' }}</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 pt-0">
+                <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="btn btn-sm btn-r2s-primary w-100 py-1">
+                  Propose Swap &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

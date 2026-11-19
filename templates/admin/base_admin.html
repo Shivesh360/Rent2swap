@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}{% block admin_title %}Admin Control Center{% endblock %} - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-3" id="admin-panel-container">
+
+  <!-- Admin Masthead -->
+  <div class="r2s-panel-box p-3 p-md-4 mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="r2s-brand-logo-icon" style="background: linear-gradient(135deg, #7c3aed, #a855f7); width: 48px; height: 48px; border-radius: 12px; font-size: 1.3rem;">
+          <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h4 class="fw-bold text-white mb-0">Rent2Swap <span class="r2s-gradient-text">Admin Center</span></h4>
+            <span class="badge-r2s" style="background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236, 72, 153, 0.4); color: #f472b6;">
+              <i class="bi bi-shield-check me-1"></i>Staff Clearance
+            </span>
+          </div>
+          <p class="text-secondary small mb-0 mt-0.5">
+            Campus moderation, verification approvals, transaction safety &amp; peer dispute resolution.
+          </p>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline">
+          <i class="bi bi-shop me-1"></i> Public Catalog
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-r2s-outline">
+          <i class="bi bi-speedometer2 me-1"></i> My Dashboard
+        </a>
+        <a href="{{ url_for('admin_action_log') }}" class="btn btn-sm btn-r2s-primary">
+          <i class="bi bi-journal-text me-1"></i> Audit Log
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Sub-Navigation Tabs Bar -->
+  <div class="d-flex gap-2 mb-4 overflow-auto pb-2" id="admin-subnav">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm {% if request.endpoint == 'admin_dashboard' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-grid-1x2-fill me-1"></i> Overview
+    </a>
+    <a href="{{ url_for('admin_students') }}" class="btn btn-sm {% if request.endpoint == 'admin_students' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-people-fill me-1"></i> Students
+    </a>
+    <a href="{{ url_for('admin_verifications') }}" class="btn btn-sm {% if request.endpoint == 'admin_verifications' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap position-relative">
+      <i class="bi bi-patch-check-fill me-1"></i> Verifications
+      {% if pending_verif_count and pending_verif_count > 0 %}
+        <span class="badge bg-danger rounded-pill ms-1">{{ pending_verif_count }}</span>
+      {% endif %}
+    </a>
+    <a href="{{ url_for('admin_listings') }}" class="btn btn-sm {% if request.endpoint == 'admin_listings' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-box-seam me-1"></i> Listings
+    </a>
+    <a href="{{ url_for('admin_rentals') }}" class="btn btn-sm {% if request.endpoint == 'admin_rentals' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-arrow-left-right me-1"></i> Rentals
+    </a>
+    <a href="{{ url_for('admin_damage_reports') }}" class="btn btn-sm {% if request.endpoint == 'admin_damage_reports' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-shield-exclamation me-1"></i> Damage Disputes
+    </a>
+    <a href="{{ url_for('admin_reports') }}" class="btn btn-sm {% if request.endpoint == 'admin_reports' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-flag-fill me-1"></i> Reports
+    </a>
+    <a href="{{ url_for('admin_reviews') }}" class="btn btn-sm {% if request.endpoint == 'admin_reviews' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-star-half me-1"></i> Reviews
+    </a>
+    <a href="{{ url_for('admin_action_log') }}" class="btn btn-sm {% if request.endpoint == 'admin_action_log' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      <i class="bi bi-clock-history me-1"></i> Action Log
+    </a>
+  </div>
+
+  <!-- Admin Main View Content Area -->
+  {% block admin_content %}{% endblock %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const adminRoot = document.getElementById('admin-panel-container');
+  if (!adminRoot) return;
+  adminRoot.querySelectorAll('.modal').forEach(function(modalEl) {
+    if (modalEl.parentElement !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+  });
+  document.querySelectorAll('#admin-panel-container form[method="POST"], #admin-panel-container form[method="post"], body > .modal form[method="POST"], body > .modal form[method="post"]').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      if (e.defaultPrevented) return;
+      const submitter = e.submitter || form.querySelector('button[type="submit"]:not([disabled])');
+      const confirmMsg = (submitter && submitter.getAttribute('data-confirm-message')) || form.getAttribute('data-confirm-message');
+      if (confirmMsg && !window.confirm(confirmMsg)) {
+        e.preventDefault();
+        return;
+      }
+      if (form.dataset.submitting === '1') {
+        e.preventDefault();
+        return;
+      }
+      form.dataset.submitting = '1';
+      if (submitter && !submitter.name) {
+        submitter.disabled = true;
+        submitter.dataset.origHtml = submitter.innerHTML;
+        submitter.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Working...';
+      } else if (submitter && submitter.name) {
+        const hiddenAction = document.createElement('input');
+        hiddenAction.type = 'hidden';
+        hiddenAction.name = submitter.name;
+        hiddenAction.value = submitter.value;
+        form.appendChild(hiddenAction);
+        form.querySelectorAll('button[type="submit"]').forEach(function(b) { b.disabled = true; });
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

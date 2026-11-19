@@ -1,0 +1,7 @@
+{
+  "name": "Rent It Bro",
+  "description": "Rent It Bro: An AI-Powered Rental, Selling & Exchange Marketplace - Phase 2: Marketplace & Resource Management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

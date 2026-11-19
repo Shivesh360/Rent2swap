@@ -1,0 +1,154 @@
+{% macro render_listing_card(item, card_prefix='item-card', btn_prefix='item-view', compact=false, index=0) %}
+{% set gallery_urls = [] %}
+{% if item.gallery_images %}
+  {% for gpath in item.gallery_images %}
+    {% set _ = gallery_urls.append(gpath | image_url(item.category)) %}
+  {% endfor %}
+{% else %}
+  {% set _ = gallery_urls.append(item.primary_image | image_url(item.category)) %}
+{% endif %}
+{% set is_available = (item.status == 'Available') %}
+{% set delay_ms = (index * 45) if index < 12 else 480 %}
+
+<article
+  class="r2l-card h-100 d-flex flex-column{% if not is_available %} is-unavailable{% endif %}"
+  id="{{ card_prefix }}-{{ item.item_id }}"
+  style="--r2l-delay: {{ delay_ms }}ms;"
+  data-item-id="{{ item.item_id }}">
+
+  <!-- Media Frame (Consistent 4:3 Ratio) -->
+  <div class="r2l-card-media" data-gallery='{{ gallery_urls | tojson | safe }}' data-idx="0">
+    <img
+      src="{{ gallery_urls[0] }}"
+      alt="{{ item.title }}"
+      class="r2l-card-img"
+      loading="lazy"
+      referrerpolicy="no-referrer"
+      onerror="this.onerror=null; this.src='{{ url_for('static', filename='images/placeholders/default.svg') }}';">
+
+    <div class="r2l-media-scrim" aria-hidden="true"></div>
+
+    <!-- Top Row: Deal Type Badge (Left) + Availability Status (Right) -->
+    <div class="r2l-media-top">
+      {% if item.transaction_type == 'Rent' %}
+        <span class="r2l-type-badge r2l-type-rent">RENT</span>
+      {% elif item.transaction_type == 'Sell' %}
+        <span class="r2l-type-badge r2l-type-sell">SELL</span>
+      {% else %}
+        <span class="r2l-type-badge r2l-type-swap">SWAP</span>
+      {% endif %}
+
+      {% if item.status == 'Available' %}
+        <span class="r2l-status-badge r2l-status-available">Available</span>
+      {% elif item.status in ('Pending', 'Requested') %}
+        <span class="r2l-status-badge r2l-status-pending">Pending</span>
+      {% elif item.status == 'Rented' %}
+        <span class="r2l-status-badge r2l-status-rented">Rented</span>
+      {% elif item.status == 'Sold' %}
+        <span class="r2l-status-badge r2l-status-sold">Sold</span>
+      {% elif item.status == 'Exchanged' %}
+        <span class="r2l-status-badge r2l-status-swapped">Exchanged</span>
+      {% else %}
+        <span class="r2l-status-badge r2l-status-unavailable">Unavailable</span>
+      {% endif %}
+    </div>
+
+    <!-- Multi-Image Gallery Controls (Only when > 1 image exists) -->
+    {% if gallery_urls | length > 1 %}
+      <button type="button" class="r2l-gallery-btn r2l-gallery-prev" aria-label="Previous product photo" title="Previous photo">
+        <i class="bi bi-chevron-left" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="r2l-gallery-btn r2l-gallery-next" aria-label="Next product photo" title="Next photo">
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+      </button>
+      <div class="r2l-media-bottom">
+        <div class="r2l-gallery-dots" aria-hidden="true">
+          {% for _u in gallery_urls[:5] %}
+            <span class="r2l-gallery-dot{% if loop.first %} is-active{% endif %}"></span>
+          {% endfor %}
+        </div>
+        <span class="r2l-photo-count">
+          <i class="bi bi-images me-1" aria-hidden="true"></i><span class="r2l-photo-curr">1</span>/{{ gallery_urls | length }}
+        </span>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Card Body -->
+  <div class="r2l-card-body d-flex flex-column flex-grow-1">
+    <!-- Quiet Unboxed Metadata Line -->
+    <div class="r2l-card-meta">
+      <span class="r2l-meta-cat">{{ item.category }}</span>
+      {% if item.condition %}
+        <span class="r2l-meta-sep" aria-hidden="true">&middot;</span>
+        <span>{{ item.condition }}</span>
+      {% endif %}
+      {% if item.city %}
+        <span class="r2l-meta-sep" aria-hidden="true">&middot;</span>
+        <span class="text-truncate">{{ item.city }}</span>
+      {% endif %}
+      {% if item.is_sample %}
+        <span class="r2l-meta-sep" aria-hidden="true">&middot;</span>
+        <span class="r2x-sample-tag">Sample</span>
+      {% endif %}
+    </div>
+
+    <!-- Product Title (2-line clamp, stretched clickable card target) -->
+    <h3 class="r2l-card-title" title="{{ item.title }}">
+      <a href="{{ url_for('item_details', item_id=item.item_id) }}" class="r2l-card-title-link stretched-link">
+        {{ item.title }}
+      </a>
+    </h3>
+
+    <!-- Concise Description (2-line clamp) -->
+    {% if not compact %}
+      <p class="r2l-card-desc" title="{{ item.description }}">
+        {{ item.description or 'Campus student listing available for peer handover.' }}
+      </p>
+    {% endif %}
+
+    <!-- Privacy-Safe Seller Row -->
+    <div class="r2l-seller-row">
+      {% set s_name = 'Sample Catalog' if item.is_sample else (item.seller_name or 'Campus Peer') %}
+      {% set s_init = (s_name | trim)[0] | upper if (s_name | trim) else 'S' %}
+      <span class="r2l-seller-avatar" aria-hidden="true">{{ s_init }}</span>
+      <span class="r2l-seller-name text-truncate">{{ s_name }}</span>
+      {% if not item.is_sample and item.seller_verification_status == 'Verified' %}
+        <span class="r2l-verified-tag" title="Verified Student">
+          <i class="bi bi-patch-check-fill" aria-hidden="true"></i>
+          <span>Verified</span>
+        </span>
+      {% endif %}
+    </div>
+
+    <!-- Price / Exchange & Action Footer -->
+    <div class="r2l-card-footer mt-auto">
+      <div class="r2l-price-block">
+        {% if item.transaction_type == 'Rent' %}
+          <div class="r2l-price r2l-price-rent">
+            ₹{{ "{:,.0f}".format(item.rent_amount or 0) }}<span class="r2l-price-unit">/{{ (item.rent_period or 'day') | lower }}</span>
+          </div>
+        {% elif item.transaction_type == 'Sell' %}
+          <div class="r2l-price r2l-price-sell">
+            ₹{{ "{:,.0f}".format(item.price or 0) }}
+          </div>
+        {% else %}
+          <div class="r2l-price r2l-price-swap" title="{{ item.exchange_preference or 'Open to campus swap offers' }}">
+            Available for Exchange
+          </div>
+          {% if item.exchange_preference and not compact %}
+            <div class="r2l-swap-hint text-truncate" title="{{ item.exchange_preference }}">
+              For: {{ item.exchange_preference }}
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <a href="{{ url_for('item_details', item_id=item.item_id) }}" class="r2l-view-btn" id="{{ btn_prefix }}-{{ item.item_id }}" tabindex="-1">
+        <span>View Details</span>
+        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+      </a>
+    </div>
+  </div>
+</article>
+{% endmacro %}

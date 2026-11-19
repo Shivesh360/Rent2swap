@@ -1,0 +1,315 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Admin Overview &amp; Metrics{% endblock %}
+
+{% block admin_content %}
+<!-- Overview Metrics: 8 Live Database Stat Cards -->
+<div class="row g-3 mb-4" id="admin-stats-grid">
+
+  <!-- 1. Total Students -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Total Students</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem;">
+          <i class="bi bi-people-fill"></i>
+        </div>
+      </div>
+      <h3 class="fw-bold mb-0 text-white">{{ stats.total_students }}</h3>
+      <a href="{{ url_for('admin_students') }}" class="small text-decoration-none mt-2 d-inline-block" style="color: var(--r2s-primary-light);">
+        Manage accounts &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 2. Verified Students -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Verified Students</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #10b981, #06b6d4);">
+          <i class="bi bi-patch-check-fill"></i>
+        </div>
+      </div>
+      <h3 class="fw-bold mb-0 text-success">{{ stats.verified_students }}</h3>
+      <a href="{{ url_for('admin_verifications', status='Verified') }}" class="small text-decoration-none mt-2 d-inline-block text-success">
+        View verified peers &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 3. Active / Total Listings -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Active Listings</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem;">
+          <i class="bi bi-box-seam"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h3 class="fw-bold mb-0 text-white">{{ stats.active_listings }}</h3>
+        <span class="small text-secondary">/ {{ stats.total_listings }} total</span>
+      </div>
+      <a href="{{ url_for('admin_listings', status='Available') }}" class="small text-decoration-none mt-2 d-inline-block" style="color: var(--r2s-primary-light);">
+        Catalog items &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 4. Active / Total Rentals -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Active Rentals</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #3b82f6, #6366f1);">
+          <i class="bi bi-arrow-left-right"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h3 class="fw-bold mb-0 text-info">{{ stats.active_rentals }}</h3>
+        <span class="small text-secondary">/ {{ stats.total_rentals }} total</span>
+      </div>
+      <a href="{{ url_for('admin_rentals', tab='active') }}" class="small text-decoration-none mt-2 d-inline-block text-info">
+        Track handovers &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 5. Pending Verifications (Actionable) -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100 border" style="border-color: {% if stats.pending_verifications > 0 %}rgba(245, 158, 11, 0.5){% else %}rgba(168, 85, 247, 0.2){% endif %} !important;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Pending Verifications</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #f59e0b, #d97706);">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+      </div>
+      <h3 class="fw-bold mb-0 text-warning">{{ stats.pending_verifications }}</h3>
+      <a href="{{ url_for('admin_verifications', status='Pending') }}" class="small text-decoration-none mt-2 d-inline-block text-warning fw-semibold">
+        Review student IDs &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 6. Pending Requests -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Pending Requests</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #8b5cf6, #ec4899);">
+          <i class="bi bi-send-fill"></i>
+        </div>
+      </div>
+      <h3 class="fw-bold mb-0 text-white">{{ stats.pending_requests }}</h3>
+      <a href="{{ url_for('admin_rentals', tab='pending') }}" class="small text-decoration-none mt-2 d-inline-block" style="color: var(--r2s-primary-light);">
+        Proposals pipeline &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 7. Overdue Rentals (High Priority) -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100 border" style="border-color: {% if stats.overdue_rentals > 0 %}rgba(244, 63, 94, 0.5){% else %}rgba(168, 85, 247, 0.2){% endif %} !important;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Overdue Rentals</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #ef4444, #f43f5e);">
+          <i class="bi bi-alarm-fill"></i>
+        </div>
+      </div>
+      <h3 class="fw-bold mb-0 text-danger">{{ stats.overdue_rentals }}</h3>
+      <a href="{{ url_for('admin_rentals', tab='overdue') }}" class="small text-decoration-none mt-2 d-inline-block text-danger fw-semibold">
+        Overdue cases &rarr;
+      </a>
+    </div>
+  </div>
+
+  <!-- 8. Open Reports & Damage Disputes -->
+  <div class="col-6 col-lg-3">
+    <div class="r2s-glass-card p-3 h-100 border" style="border-color: {% if (stats.open_reports + stats.open_damage_reports) > 0 %}rgba(244, 63, 94, 0.5){% else %}rgba(168, 85, 247, 0.2){% endif %} !important;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="small text-secondary fw-semibold">Open Reports / Disputes</span>
+        <div class="r2s-brand-logo-icon" style="width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; background: linear-gradient(135deg, #e11d48, #be123c);">
+          <i class="bi bi-flag-fill"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-baseline gap-2">
+        <h3 class="fw-bold mb-0 text-danger">{{ stats.open_reports }}</h3>
+        <span class="small text-secondary">+ {{ stats.open_damage_reports }} damage</span>
+      </div>
+      <div class="d-flex gap-3 mt-2">
+        <a href="{{ url_for('admin_reports', status='Open') }}" class="small text-decoration-none text-danger fw-semibold">
+          Reports &rarr;
+        </a>
+        <a href="{{ url_for('admin_damage_reports') }}" class="small text-decoration-none text-warning fw-semibold">
+          Disputes &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Recent Queue Sections (Two Columns) -->
+<div class="row g-4">
+
+  <!-- Left: Pending Verifications Quick Action -->
+  <div class="col-lg-6">
+    <div class="r2s-glass-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-person-bounding-box text-warning"></i>
+          <span>Verification Queue</span>
+        </h5>
+        <a href="{{ url_for('admin_verifications', status='Pending') }}" class="btn btn-sm btn-r2s-outline">View All</a>
+      </div>
+
+      {% if recent_verifications %}
+        <div class="d-flex flex-column gap-2">
+          {% for u in recent_verifications %}
+            <div class="p-3 r2s-panel-box d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div>
+                <strong class="text-white d-block">{{ u.name }}</strong>
+                <span class="small text-secondary d-block">{{ u.college or 'College not provided' }} &bull; Roll: {{ u.enrollment_no or 'N/A' }}</span>
+                <div class="d-flex flex-wrap gap-2 mt-1 small">
+                  <span class="{% if u.front_doc and u.front_doc.status == 'ok' %}text-success{% else %}text-warning{% endif %}">
+                    <i class="bi {% if u.front_doc and u.front_doc.status == 'ok' %}bi-check-circle-fill{% else %}bi-exclamation-circle{% endif %} me-1"></i>Front ID
+                  </span>
+                  <span class="{% if u.back_doc and u.back_doc.status == 'ok' %}text-success{% else %}text-warning{% endif %}">
+                    <i class="bi {% if u.back_doc and u.back_doc.status == 'ok' %}bi-check-circle-fill{% else %}bi-exclamation-circle{% endif %} me-1"></i>Back ID
+                  </span>
+                </div>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-r2s-outline py-1 px-2" data-bs-toggle="modal" data-bs-target="#dashInspectModal-{{ u.user_id }}">
+                  <i class="bi bi-images me-1"></i> Inspect IDs
+                </button>
+                {% set docs_ok = (u.front_doc and u.front_doc.has_doc and u.back_doc and u.back_doc.has_doc) %}
+                <form action="{{ url_for('admin_approve_verification', user_id=u.user_id) }}" method="POST" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3" {% if not docs_ok %}disabled title="Missing Front or Back ID"{% endif %}>
+                    <i class="bi bi-check-lg"></i> Approve
+                  </button>
+                </form>
+                <button type="button" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" data-bs-toggle="modal" data-bs-target="#dashRejectModal-{{ u.user_id }}">
+                  Reject
+                </button>
+              </div>
+            </div>
+
+            <!-- Inspect Front & Back IDs Modal -->
+            <div class="modal fade" id="dashInspectModal-{{ u.user_id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content r2s-glass-panel text-white">
+                  <div class="modal-header border-bottom border-secondary border-opacity-25">
+                    <h6 class="modal-title fw-bold">
+                      <i class="bi bi-person-vcard text-primary-light me-2"></i>Inspect College IDs &mdash; {{ u.name }}
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="row g-3 text-center">
+                      <div class="col-md-6">
+                        <h6 class="small fw-bold text-white mb-2">College ID Front</h6>
+                        {% if u.front_doc and u.front_doc.status == 'ok' and u.front_doc.view_url %}
+                          <a href="{{ u.front_doc.view_url }}" target="_blank" rel="noopener">
+                            <img src="{{ u.front_doc.view_url }}" alt="College ID Front" class="img-fluid rounded border" style="max-height: 240px; object-fit: contain;">
+                          </a>
+                        {% elif u.front_doc and u.front_doc.status == 'missing' %}
+                          <div class="alert alert-warning small mb-0">{{ u.front_doc.error }}</div>
+                        {% else %}
+                          <div class="text-muted small py-3">Not uploaded</div>
+                        {% endif %}
+                      </div>
+                      <div class="col-md-6">
+                        <h6 class="small fw-bold text-white mb-2">College ID Back</h6>
+                        {% if u.back_doc and u.back_doc.status == 'ok' and u.back_doc.view_url %}
+                          <a href="{{ u.back_doc.view_url }}" target="_blank" rel="noopener">
+                            <img src="{{ u.back_doc.view_url }}" alt="College ID Back" class="img-fluid rounded border" style="max-height: 240px; object-fit: contain;">
+                          </a>
+                        {% elif u.back_doc and u.back_doc.status == 'missing' %}
+                          <div class="alert alert-warning small mb-0">{{ u.back_doc.error }}</div>
+                        {% else %}
+                          <div class="text-muted small py-3">Not uploaded</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer border-top border-secondary border-opacity-25">
+                    <a href="{{ url_for('admin_verifications', status='Pending') }}" class="btn btn-sm btn-r2s-primary">Open Full Verification Queue</a>
+                    <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Reject Reason Modal -->
+            <div class="modal fade" id="dashRejectModal-{{ u.user_id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content r2s-glass-panel">
+                  <div class="modal-header border-bottom border-secondary border-opacity-25">
+                    <h6 class="modal-title fw-bold text-white">
+                      <i class="bi bi-x-circle text-danger me-2"></i>Reject Verification - {{ u.name }}
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <form action="{{ url_for('admin_reject_verification', user_id=u.user_id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-body">
+                      <label for="dash-reason-{{ u.user_id }}" class="form-label small text-white">Rejection Reason <span class="text-danger">*</span></label>
+                      <textarea name="rejection_reason" id="dash-reason-{{ u.user_id }}" class="form-control r2s-input" rows="3" placeholder="Specify why this verification is rejected..." required></textarea>
+                    </div>
+                    <div class="modal-footer border-top border-secondary border-opacity-25">
+                      <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+                      <button type="submit" class="btn btn-sm btn-danger px-3">Confirm Rejection</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4 text-secondary small">
+          <i class="bi bi-check2-circle fs-3 d-block mb-1 text-success"></i>
+          No student verifications waiting in the queue!
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right: Recent Administrative Actions -->
+  <div class="col-lg-6">
+    <div class="r2s-glass-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-journal-text text-primary-light"></i>
+          <span>Recent Staff Actions</span>
+        </h5>
+        <a href="{{ url_for('admin_action_log') }}" class="btn btn-sm btn-r2s-outline">Audit Log</a>
+      </div>
+
+      {% if recent_actions %}
+        <div class="d-flex flex-column gap-2">
+          {% for act in recent_actions %}
+            <div class="p-3 r2s-panel-box">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge-r2s badge-r2s-rent py-0 px-2" style="font-size: 0.68rem;">{{ act.action_type }}</span>
+                <span class="small text-muted" style="font-size: 0.72rem;">{{ act.created_at[:16] if act.created_at else '' }}</span>
+              </div>
+              <div class="small text-white fw-semibold">{{ act.details }}</div>
+              <div class="small text-secondary" style="font-size: 0.75rem;">By: {{ act.admin_name or 'Administrator' }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4 text-secondary small">
+          <i class="bi bi-clock-history fs-3 d-block mb-1 text-muted"></i>
+          No admin actions recorded yet.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

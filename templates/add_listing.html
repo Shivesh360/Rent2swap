@@ -1,0 +1,1613 @@
+{% extends "base.html" %}
+
+{% block title %}Create a Listing - Rent2Swap Student Marketplace{% endblock %}
+
+{% block content %}
+{% set current_cond = form_data.get('condition', '') %}
+{% if current_cond == 'Used' %}{% set current_cond = 'Fair' %}{% endif %}
+{% set current_type = form_data.get('transaction_type', 'Rent') %}
+{% if current_type in ('Swap', 'Exchange') %}{% set current_type = 'Exchange' %}{% endif %}
+{% set seller_display_name = session.get('user_name', 'Verified Student') %}
+{% set seller_initial = (seller_display_name | trim)[0] | upper if (seller_display_name | trim) else 'S' %}
+
+<div class="container py-3 py-md-4 r2c-page" id="add-listing-page">
+
+  <!-- Page Header -->
+  <div class="mb-3">
+    <a href="{{ url_for('marketplace') }}" class="r2c-back-link">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      <span>Back to Marketplace</span>
+    </a>
+    <div class="r2c-header">
+      <div>
+        <h1 class="r2c-title">Post a <span class="r2s-gradient-text">Product</span></h1>
+        <p class="r2c-subtitle">
+          List textbooks, calculators, cycles, or electronics to rent, sell, or swap with verified students on your campus.
+        </p>
+      </div>
+      {% if not verification_gate %}
+      <div class="r2c-header-meta">
+        <i class="bi bi-patch-check-fill text-success" aria-hidden="true"></i>
+        <span>Verified Student Account</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if verification_gate %}
+  <!-- Student Verification Gate (Preserved) -->
+  <div class="r2s-glass-card p-4 p-md-5 text-center mx-auto" style="max-width: 720px;" id="add-listing-verification-gate">
+    <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 62px; height: 62px; border-radius: 18px; font-size: 1.8rem; {% if verification_status == 'Pending' %}background: linear-gradient(135deg, #f59e0b, #d97706);{% elif verification_status == 'Rejected' %}background: linear-gradient(135deg, #ef4444, #b91c1c);{% else %}background: linear-gradient(135deg, #7c3aed, #a855f7);{% endif %} color: #fff;">
+      <i class="bi {% if verification_status == 'Pending' %}bi-clock-history{% elif verification_status == 'Rejected' %}bi-x-circle-fill{% else %}bi-shield-lock-fill{% endif %}"></i>
+    </div>
+    <h4 class="fw-bold text-white mb-2">Student Verification Required to Publish Listings</h4>
+    {% if verification_status == 'Pending' %}
+      <span class="badge-r2s badge-r2s-swap mb-3 d-inline-block" style="background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.45); color: #fcd34d;">Pending</span>
+      <p class="text-secondary small mb-4">Your verification request is under review. Once approved by campus administrators, you will be able to publish listings on Rent2Swap.</p>
+      <a href="{{ url_for('verification') }}" class="btn btn-r2s-outline px-4 me-2"><i class="bi bi-pencil-square me-1"></i> Edit Verification Details</a>
+    {% elif verification_status == 'Rejected' %}
+      <span class="badge-r2s mb-3 d-inline-block" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5;">Rejected</span>
+      <p class="text-secondary small mb-2">Your verification was rejected: <strong class="text-white">{{ verification_rejection_reason or 'Please check admin feedback and upload clear ID images.' }}</strong></p>
+      <a href="{{ url_for('verification') }}" class="btn btn-danger px-4 me-2 mt-2"><i class="bi bi-arrow-repeat me-1"></i> Edit &amp; Resubmit</a>
+    {% else %}
+      <span class="badge-r2s mb-3 d-inline-block" style="background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.4); color: #cbd5e1;">Not Submitted</span>
+      <p class="text-secondary small mb-4">Verify Your Student Identity to Access Rent2Swap Features. Upload both your College ID Front and Back images to start publishing gear.</p>
+      <a href="{{ url_for('verification') }}" class="btn btn-r2s-primary px-4 me-2"><i class="bi bi-shield-check me-1"></i> Verify Now</a>
+    {% endif %}
+    <a href="{{ url_for('marketplace') }}" class="btn btn-r2s-outline px-4">Browse Marketplace</a>
+  </div>
+
+  {% else %}
+
+  <!-- Non-blocking Quick Stepper -->
+  <nav class="r2c-stepper" aria-label="Listing sections">
+    <a href="#sec-basic" class="r2c-step-item" id="step-pill-basic">
+      <span class="r2c-step-num">1</span>
+      <span class="r2c-step-label">Basic Info</span>
+    </a>
+    <a href="#sec-images" class="r2c-step-item" id="step-pill-images">
+      <span class="r2c-step-num">2</span>
+      <span class="r2c-step-label">Photos</span>
+    </a>
+    <a href="#sec-deal-type" class="r2c-step-item is-complete" id="step-pill-type">
+      <span class="r2c-step-num">3</span>
+      <span class="r2c-step-label">Deal Type</span>
+    </a>
+    <a href="#sec-deal-details" class="r2c-step-item" id="step-pill-pricing">
+      <span class="r2c-step-num">4</span>
+      <span class="r2c-step-label">Pricing</span>
+    </a>
+    <a href="#sec-handover" class="r2c-step-item" id="step-pill-handover">
+      <span class="r2c-step-num">5</span>
+      <span class="r2c-step-label">Handover</span>
+    </a>
+  </nav>
+
+  <div class="row g-4 align-items-start">
+    <!-- Left Column: Organized Multi-Section Form -->
+    <div class="col-lg-8">
+      <!-- Dynamic Inline Alert Banner -->
+      <div id="form-alert-container"></div>
+
+      <form action="{{ url_for('add_listing') }}" method="POST" enctype="multipart/form-data" id="create-listing-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Section A: Basic Product Information -->
+        <section class="r2c-section" id="sec-basic" aria-labelledby="sec-basic-title">
+          <div class="r2c-section-head">
+            <div class="r2c-section-title-wrap">
+              <span class="r2c-section-badge" aria-hidden="true">A</span>
+              <div>
+                <h2 class="r2c-section-title" id="sec-basic-title">Basic Product Information</h2>
+                <p class="r2c-section-sub">Help fellow students find your product quickly with clear details.</p>
+              </div>
+            </div>
+            <span class="r2c-section-tag">Required</span>
+          </div>
+
+          <!-- 1. Product Title -->
+          <div class="mb-3">
+            <label for="item-title" class="form-label fw-semibold">
+              Product Title <span class="text-danger">*</span>
+            </label>
+            <input
+              type="text"
+              name="title"
+              id="item-title"
+              class="form-control r2s-input"
+              placeholder="e.g. Casio fx-991EX Scientific Calculator or Firefox 29T Mountain Bike"
+              value="{{ form_data.get('title', '') }}"
+              maxlength="120"
+              required
+              minlength="3">
+            <div class="r2c-field-error" id="err-item-title"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+            <div class="form-text small text-muted">Include brand, model, or edition so classmates recognize it fast.</div>
+          </div>
+
+          <!-- 2. Category -->
+          <div class="mb-3">
+            <label for="item-category" class="form-label fw-semibold">
+              Category <span class="text-danger">*</span>
+            </label>
+            <select name="category" id="item-category" class="form-select r2s-input" required>
+              <option value="" disabled {% if not form_data.get('category') %}selected{% endif %}>Choose a product category...</option>
+              {% for cat in categories %}
+                <option value="{{ cat }}" {% if form_data.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+            <div class="r2c-field-error" id="err-item-category"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+          </div>
+
+          <!-- 3. Product Condition (Selectable Cards + Synced Hidden Input) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold d-block">
+              Product Condition <span class="text-danger">*</span>
+            </label>
+            <input type="hidden" name="condition" id="item-condition" value="{{ current_cond }}" required>
+            <div class="r2c-cond-grid" id="condition-cards-group" role="radiogroup" aria-label="Product Condition">
+              <button type="button" class="r2c-cond-card{% if current_cond == 'New' %} is-selected{% endif %}" data-condition="New" role="radio" aria-checked="{{ 'true' if current_cond == 'New' else 'false' }}">
+                <span class="r2c-cond-name">New</span>
+                <span class="r2c-cond-hint">Unused or sealed</span>
+              </button>
+              <button type="button" class="r2c-cond-card{% if current_cond == 'Like New' %} is-selected{% endif %}" data-condition="Like New" role="radio" aria-checked="{{ 'true' if current_cond == 'Like New' else 'false' }}">
+                <span class="r2c-cond-name">Like New</span>
+                <span class="r2c-cond-hint">Barely used, zero flaws</span>
+              </button>
+              <button type="button" class="r2c-cond-card{% if current_cond == 'Good' %} is-selected{% endif %}" data-condition="Good" role="radio" aria-checked="{{ 'true' if current_cond == 'Good' else 'false' }}">
+                <span class="r2c-cond-name">Good</span>
+                <span class="r2c-cond-hint">Minor wear, works great</span>
+              </button>
+              <button type="button" class="r2c-cond-card{% if current_cond == 'Fair' %} is-selected{% endif %}" data-condition="Fair" role="radio" aria-checked="{{ 'true' if current_cond == 'Fair' else 'false' }}">
+                <span class="r2c-cond-name">Fair</span>
+                <span class="r2c-cond-hint">Visible wear, functional</span>
+              </button>
+            </div>
+            <div class="r2c-field-error" id="err-item-condition"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+          </div>
+
+          <!-- 4. Product Description -->
+          <div class="mb-1">
+            <label for="item-description" class="form-label fw-semibold">
+              Product Description <span class="text-danger">*</span>
+            </label>
+            <textarea
+              name="description"
+              id="item-description"
+              rows="4"
+              maxlength="1200"
+              class="form-control r2s-input"
+              placeholder="Describe the condition, key features, how long you've used it, included accessories (chargers, covers, manuals), and any minor scratches or defects..."
+              required
+              minlength="10">{{ form_data.get('description', '') }}</textarea>
+            <div class="r2c-field-error" id="err-item-description"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+            <div class="r2c-desc-meta">
+              <span>Honest details about condition, age, and defects speed up student deals.</span>
+              <span class="r2c-char-counter" id="desc-char-count">0 / 1200</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section B: Product Images -->
+        <section class="r2c-section" id="sec-images" aria-labelledby="sec-images-title">
+          <div class="r2c-section-head">
+            <div class="r2c-section-title-wrap">
+              <span class="r2c-section-badge" aria-hidden="true">B</span>
+              <div>
+                <h2 class="r2c-section-title" id="sec-images-title">Product Images</h2>
+                <p class="r2c-section-sub">Bright, real photos build instant trust and get up to 3x more responses.</p>
+              </div>
+            </div>
+            <span class="r2c-section-tag">Up to 8 Photos</span>
+          </div>
+
+          <!-- Drag & Drop Zone -->
+          <div id="image-drop-zone" class="r2c-dropzone mb-3" tabindex="0" role="button" aria-label="Drag and drop product images or click to browse">
+            <div class="r2c-dropzone-icon">
+              <i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i>
+            </div>
+            <h3 class="h6 fw-bold text-white mb-1">Drag &amp; drop your product photos here</h3>
+            <p class="small text-secondary mb-3">
+              Supports JPG, PNG, and WEBP &bull; Max 10 MB per photo &bull; Multiple selection supported
+            </p>
+            <button type="button" class="btn btn-r2s-primary btn-sm px-4" id="browse-images-btn" onclick="document.getElementById('item-images').click()">
+              <i class="bi bi-images me-1" aria-hidden="true"></i> Upload Images
+            </button>
+          </div>
+
+          <!-- Synchronized Hidden Multi-File Input -->
+          <input type="file" name="images" id="item-images" class="d-none" multiple accept="image/jpeg,image/png,image/webp,image/jpg">
+
+          <!-- Photo Actions & Summary Bar -->
+          <div id="image-status-bar" class="d-none d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 px-1 small text-secondary">
+            <span class="photo-count-text"></span>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2" onclick="document.getElementById('item-images').click()">
+                <i class="bi bi-plus-lg me-1"></i>Add More
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="window.r2sUploader && window.r2sUploader.clearAll()">
+                <i class="bi bi-trash3 me-1"></i>Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Inline Validation Alerts from MultiImageUploader -->
+          <div id="image-alert-container"></div>
+
+          <!-- Immediate Gallery Thumbnails with Cover Selection -->
+          <div id="image-preview-container" class="d-flex gap-2 flex-wrap mt-2"></div>
+
+          <!-- Live Upload Progress Indicator (shown during publish) -->
+          <div id="image-upload-progress" class="r2c-upload-progress d-none" aria-live="polite">
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="fw-semibold text-white" id="upload-progress-label">Preparing photos...</span>
+              <span class="fw-bold text-primary-light" id="upload-progress-pct">0%</span>
+            </div>
+            <div class="r2c-progress-track">
+              <div class="r2c-progress-fill" id="upload-progress-fill"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section C: Listing Type Selection -->
+        <section class="r2c-section" id="sec-deal-type" aria-labelledby="sec-type-title">
+          <div class="r2c-section-head">
+            <div class="r2c-section-title-wrap">
+              <span class="r2c-section-badge" aria-hidden="true">C</span>
+              <div>
+                <h2 class="r2c-section-title" id="sec-type-title">Choose Listing Type</h2>
+                <p class="r2c-section-sub">Pick how you want fellow students to deal for this product.</p>
+              </div>
+            </div>
+            <span class="r2c-section-tag">Required</span>
+          </div>
+
+          <div class="r2c-type-grid">
+            <!-- RENT -->
+            <div>
+              <input type="radio" class="btn-check" name="transaction_type" id="type-rent" value="Rent" autocomplete="off" {% if current_type == 'Rent' %}checked{% endif %}>
+              <label class="r2c-type-card is-rent-card" for="type-rent">
+                <div class="r2c-type-top">
+                  <span class="r2c-type-icon is-rent" aria-hidden="true"><i class="bi bi-clock-history"></i></span>
+                  <span class="r2c-type-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                </div>
+                <div class="r2c-type-name">RENT</div>
+                <div class="r2c-type-desc">Rent your product to another student for a flexible campus duration.</div>
+                <div class="r2c-type-ex">e.g. Books, cycles, calculators, electronics</div>
+              </label>
+            </div>
+
+            <!-- SELL -->
+            <div>
+              <input type="radio" class="btn-check" name="transaction_type" id="type-sell" value="Sell" autocomplete="off" {% if current_type == 'Sell' %}checked{% endif %}>
+              <label class="r2c-type-card is-sell-card" for="type-sell">
+                <div class="r2c-type-top">
+                  <span class="r2c-type-icon is-sell" aria-hidden="true"><i class="bi bi-tag-fill"></i></span>
+                  <span class="r2c-type-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                </div>
+                <div class="r2c-type-name">SELL</div>
+                <div class="r2c-type-desc">Sell your product directly to a campus peer for a one-time price.</div>
+                <div class="r2c-type-ex">e.g. Used textbooks, gadgets, accessories</div>
+              </label>
+            </div>
+
+            <!-- SWAP -->
+            <div>
+              <input type="radio" class="btn-check" name="transaction_type" id="type-exchange" value="Exchange" autocomplete="off" {% if current_type == 'Exchange' %}checked{% endif %}>
+              <label class="r2c-type-card is-swap-card" for="type-exchange">
+                <div class="r2c-type-top">
+                  <span class="r2c-type-icon is-swap" aria-hidden="true"><i class="bi bi-arrow-left-right"></i></span>
+                  <span class="r2c-type-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                </div>
+                <div class="r2c-type-name">SWAP</div>
+                <div class="r2c-type-desc">Exchange your product with another student for an item you need.</div>
+                <div class="r2c-type-ex">e.g. Exchange semester books or gadgets</div>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section D: Transaction-Specific Details (Adaptive Fields) -->
+        <section class="r2c-section" id="sec-deal-details" aria-labelledby="sec-deal-title">
+          <div class="r2c-section-head">
+            <div class="r2c-section-title-wrap">
+              <span class="r2c-section-badge" aria-hidden="true">D</span>
+              <div>
+                <h2 class="r2c-section-title" id="sec-deal-title">Pricing &amp; Deal Details</h2>
+                <p class="r2c-section-sub" id="sec-deal-subtitle">Set clear rental terms tailored to campus students.</p>
+              </div>
+            </div>
+            <span class="r2c-section-tag" id="sec-deal-badge">RENT DETAILS</span>
+          </div>
+
+          <!-- RENT Panel -->
+          <div id="pricing-rent-container" class="r2c-deal-panel">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="item-rent-amount" class="form-label fw-semibold">Rental Price (₹) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);">₹</span>
+                  <input type="number" name="rent_amount" id="item-rent-amount" class="form-control r2s-input border-start-0" placeholder="e.g. 150" min="1" step="any" value="{{ form_data.get('rent_amount', '') }}">
+                </div>
+                <div class="r2c-field-error" id="err-item-rent-amount"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+              </div>
+              <div class="col-md-6">
+                <label for="item-rent-period" class="form-label fw-semibold">Rental Period <span class="text-danger">*</span></label>
+                <select name="rent_period" id="item-rent-period" class="form-select r2s-input">
+                  {% for p in rent_periods %}
+                    <option value="{{ p }}" {% if form_data.get('rent_period') == p or (not form_data.get('rent_period') and p == 'Day') %}selected{% endif %}>Per {{ p }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="r2c-info-banner">
+              <i class="bi bi-shield-check text-success" aria-hidden="true"></i>
+              <div>
+                <strong class="d-block mb-1">Zero Security Deposit &amp; Instant Campus Availability</strong>
+                Your listing goes live immediately as <strong>Available</strong>. Student renters inspect the item in person at campus handover—no upfront security deposit required.
+              </div>
+            </div>
+          </div>
+
+          <!-- SELL Panel -->
+          <div id="pricing-sell-container" class="r2c-deal-panel d-none">
+            <div class="row g-3">
+              <div class="col-md-7">
+                <label for="item-price" class="form-label fw-semibold">Selling Price (₹) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);">₹</span>
+                  <input type="number" name="price" id="item-price" class="form-control r2s-input border-start-0" placeholder="e.g. 2500" min="1" step="any" value="{{ form_data.get('price', '') }}">
+                </div>
+                <div class="r2c-field-error" id="err-item-price"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+              </div>
+            </div>
+            <div class="r2c-info-banner">
+              <i class="bi bi-tag-fill text-primary-light" aria-hidden="true"></i>
+              <div>
+                <strong class="d-block mb-1">Direct Student-to-Student Sale</strong>
+                Set a fair second-hand campus price. Buyers can message you or request purchase directly from your listing page.
+              </div>
+            </div>
+          </div>
+
+          <!-- SWAP / EXCHANGE Panel -->
+          <div id="pricing-exchange-container" class="r2c-deal-panel d-none">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label for="item-exchange-pref" class="form-label fw-semibold">Desired Item in Exchange <span class="text-danger">*</span></label>
+                <input type="text" name="exchange_preference" id="item-exchange-pref" class="form-control r2s-input" placeholder="e.g. Scientific calculator, Engineering Graphics drafter, or 3rd-sem OS textbook" value="{{ form_data.get('exchange_preference', '') }}">
+                <div class="r2c-field-error" id="err-item-exchange-pref"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+                <div class="form-text small text-muted">Be specific or list a couple of options you'd happily trade for.</div>
+              </div>
+              <div class="col-md-4">
+                <label for="item-est-value" class="form-label fw-semibold">Estimated Value (₹) <span class="text-muted fw-normal small">(Optional)</span></label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);">₹</span>
+                  <input type="number" name="estimated_value" id="item-est-value" class="form-control r2s-input border-start-0" placeholder="e.g. 1200" min="0" step="any" value="{{ form_data.get('estimated_value', form_data.get('price', '')) }}">
+                </div>
+              </div>
+            </div>
+            <div class="r2c-info-banner">
+              <i class="bi bi-arrow-left-right text-warning" aria-hidden="true"></i>
+              <div>
+                <strong class="d-block mb-1">Fair Peer-to-Peer Campus Swap</strong>
+                No cash pricing required—other verified students can propose items from their own inventory to swap with you.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section E: Campus Handover & Final Review -->
+        <section class="r2c-section" id="sec-handover" aria-labelledby="sec-handover-title">
+          <div class="r2c-section-head">
+            <div class="r2c-section-title-wrap">
+              <span class="r2c-section-badge" aria-hidden="true">E</span>
+              <div>
+                <h2 class="r2c-section-title" id="sec-handover-title">Campus Handover &amp; Publish</h2>
+                <p class="r2c-section-sub">Choose a safe, public campus spot to meet and inspect the item.</p>
+              </div>
+            </div>
+            <span class="r2c-section-tag">Final Step</span>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="item-city" class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+              <input type="text" name="city" id="item-city" class="form-control r2s-input" placeholder="e.g. Bengaluru, Delhi, Pune" value="{{ form_data.get('city', '') }}" required>
+              <div class="r2c-field-error" id="err-item-city"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+            </div>
+            <div class="col-md-6">
+              <label for="item-location" class="form-label fw-semibold">Campus Handover Spot <span class="text-danger">*</span></label>
+              <input type="text" name="location" id="item-location" class="form-control r2s-input" placeholder="e.g. Main Library Entrance, Student Center" value="{{ form_data.get('location', '') }}" required>
+              <div class="r2c-field-error" id="err-item-location"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+              <div class="form-text small text-muted">Use a public campus spot only—never include room numbers or phone numbers.</div>
+            </div>
+          </div>
+
+          <!-- Compact Optional Specifications -->
+          <div class="mb-3">
+            <a class="small fw-semibold text-decoration-none d-inline-flex align-items-center gap-1" style="color: #c4b5fd;" data-bs-toggle="collapse" href="#optional-specs-collapse" role="button" aria-expanded="false" aria-controls="optional-specs-collapse">
+              <i class="bi bi-sliders2"></i>
+              <span>Add optional specs (Brand, Model, Item Age)</span>
+              <i class="bi bi-chevron-down ms-1 small"></i>
+            </a>
+            <div class="collapse{% if form_data.get('brand') or form_data.get('model') or form_data.get('age') %} show{% endif %}" id="optional-specs-collapse">
+              <div class="row g-3 mt-1 pt-2 border-top" style="border-color: rgba(168, 85, 247, 0.14) !important;">
+                <div class="col-md-4">
+                  <label for="item-brand" class="form-label small fw-semibold">Brand <span class="text-muted fw-normal">(Optional)</span></label>
+                  <input type="text" name="brand" id="item-brand" class="form-control r2s-input form-control-sm" placeholder="e.g. Casio, Hero, Apple" value="{{ form_data.get('brand', '') }}">
+                </div>
+                <div class="col-md-4">
+                  <label for="item-model" class="form-label small fw-semibold">Model / Edition <span class="text-muted fw-normal">(Optional)</span></label>
+                  <input type="text" name="model" id="item-model" class="form-control r2s-input form-control-sm" placeholder="e.g. fx-991EX, 5th Edition" value="{{ form_data.get('model', '') }}">
+                </div>
+                <div class="col-md-4">
+                  <label for="item-age" class="form-label small fw-semibold">Age / Usage <span class="text-muted fw-normal">(Optional)</span></label>
+                  <input type="text" name="age" id="item-age" class="form-control r2s-input form-control-sm" placeholder="e.g. 1 semester, 6 months" value="{{ form_data.get('age', '') }}">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campus Care Agreement -->
+          <div class="r2c-agreement-box">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="agreement" name="agreement" required checked>
+              <label class="form-check-label text-secondary small" for="agreement">
+                I confirm this product is accurately described, in working condition, and agree to meet at a public campus location for fair inspection and handover.
+              </label>
+            </div>
+            <div class="r2c-field-error" id="err-agreement"><i class="bi bi-exclamation-circle-fill"></i><span></span></div>
+          </div>
+
+          <!-- Mobile Preview Toggle (visible only below lg breakpoint) -->
+          <div class="d-lg-none mb-3">
+            <button type="button" class="btn btn-r2s-outline btn-sm w-100 d-flex justify-content-between align-items-center py-2 px-3" data-bs-toggle="collapse" data-bs-target="#mobile-preview-collapse" aria-expanded="false" aria-controls="mobile-preview-collapse">
+              <span><i class="bi bi-eye me-2"></i>Preview Marketplace Card</span>
+              <i class="bi bi-chevron-down small"></i>
+            </button>
+            <div class="collapse mt-3" id="mobile-preview-collapse">
+              <div id="mobile-preview-slot"></div>
+            </div>
+          </div>
+
+          <!-- Submit Controls -->
+          <div class="r2c-submit-bar">
+            <a href="{{ url_for('marketplace') }}" class="btn btn-r2s-outline px-4">Cancel</a>
+            <button type="submit" class="btn btn-r2s-primary px-5 py-2 fw-semibold" id="submit-listing-btn">
+              <i class="bi bi-cloud-arrow-up-fill me-1" aria-hidden="true"></i>
+              <span>Publish Listing</span>
+            </button>
+          </div>
+        </section>
+
+      </form>
+    </div>
+
+    <!-- Right Column: Sticky Live Marketplace Preview + Readiness Checklist -->
+    <aside class="col-lg-4 d-none d-lg-block" aria-label="Live listing preview">
+      <div class="r2c-preview-sticky">
+        <div class="r2c-preview-card" id="desktop-preview-host">
+          <div class="r2c-preview-head">
+            <span class="r2c-preview-label">
+              <span class="r2c-live-dot" aria-hidden="true"></span>
+              Live Marketplace Preview
+            </span>
+            <span class="small text-muted">How students see it</span>
+          </div>
+
+          <!-- Mirrored .r2l-card Marketplace Card -->
+          <article class="r2l-card" id="live-preview-card">
+            <div class="r2l-card-media">
+              <img
+                id="prev-img"
+                src="{{ '' | image_url('') }}"
+                alt="Live listing preview"
+                class="r2l-card-img">
+              <div class="r2l-media-scrim" aria-hidden="true"></div>
+              <div class="r2l-media-top">
+                <span class="r2l-type-badge r2l-type-rent" id="prev-type-badge">RENT</span>
+                <span class="r2l-status-badge r2l-status-available">Available</span>
+              </div>
+              <div class="r2l-media-bottom d-none" id="prev-photo-meta">
+                <span></span>
+                <span class="r2l-photo-count"><i class="bi bi-images me-1"></i><span id="prev-photo-count">1</span></span>
+              </div>
+            </div>
+
+            <div class="r2l-card-body d-flex flex-column">
+              <div class="r2l-card-meta">
+                <span class="r2l-meta-cat" id="prev-cat">Category</span>
+                <span class="r2l-meta-sep" aria-hidden="true">&middot;</span>
+                <span id="prev-cond">Condition</span>
+                <span class="r2l-meta-sep" aria-hidden="true">&middot;</span>
+                <span class="text-truncate" id="prev-city">Campus</span>
+              </div>
+
+              <h3 class="r2l-card-title" id="prev-title">Your Product Title</h3>
+              <p class="r2l-card-desc" id="prev-desc">Your product description will appear here as you type...</p>
+
+              <div class="r2l-seller-row">
+                <span class="r2l-seller-avatar" aria-hidden="true">{{ seller_initial }}</span>
+                <span class="r2l-seller-name text-truncate">{{ seller_display_name }}</span>
+                <span class="r2l-verified-tag"><i class="bi bi-patch-check-fill" aria-hidden="true"></i><span>Verified</span></span>
+              </div>
+
+              <div class="r2l-card-footer mt-auto">
+                <div class="r2l-price-block">
+                  <div class="r2l-price r2l-price-rent" id="prev-price">₹0<span class="r2l-price-unit">/day</span></div>
+                  <div class="r2l-swap-hint text-truncate d-none" id="prev-swap-hint"></div>
+                </div>
+                <span class="r2l-view-btn" aria-hidden="true">
+                  <span>View Details</span>
+                  <i class="bi bi-arrow-right"></i>
+                </span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Live Listing Readiness Checklist -->
+        <div class="r2c-checklist">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-bold small text-white">Listing Readiness</span>
+            <span class="small fw-semibold" style="color: #c4b5fd;" id="readiness-count">0 / 5 ready</span>
+          </div>
+          <ul class="r2c-check-list">
+            <li class="r2c-check-row" id="chk-basic"><i class="bi bi-circle"></i><span>Title, category &amp; condition set</span></li>
+            <li class="r2c-check-row" id="chk-desc"><i class="bi bi-circle"></i><span>Helpful description (10+ chars)</span></li>
+            <li class="r2c-check-row" id="chk-photos"><i class="bi bi-circle"></i><span>Product photos added (recommended)</span></li>
+            <li class="r2c-check-row" id="chk-deal"><i class="bi bi-circle"></i><span>Rent, sell, or swap details set</span></li>
+            <li class="r2c-check-row" id="chk-handover"><i class="bi bi-circle"></i><span>City &amp; campus handover spot</span></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+  // Category placeholder map resolved via Jinja url/image_url filter
+  const R2C_CATEGORY_PLACEHOLDERS = {
+    {% for cat in categories %}
+    {{ cat | tojson }}: {{ ('' | image_url(cat)) | tojson }},
+    {% endfor %}
+    '__default__': {{ ('' | image_url('')) | tojson }}
+  };
+
+  // DOM References
+  const radioRent = document.getElementById('type-rent');
+  const radioExchange = document.getElementById('type-exchange');
+  const radioSell = document.getElementById('type-sell');
+
+  const containerRent = document.getElementById('pricing-rent-container');
+  const containerExchange = document.getElementById('pricing-exchange-container');
+  const containerSell = document.getElementById('pricing-sell-container');
+
+  const dealTitleEl = document.getElementById('sec-deal-title');
+  const dealSubEl = document.getElementById('sec-deal-subtitle');
+  const dealBadgeEl = document.getElementById('sec-deal-badge');
+
+  const titleInput = document.getElementById('item-title');
+  const categorySelect = document.getElementById('item-category');
+  const conditionInput = document.getElementById('item-condition');
+  const descTextarea = document.getElementById('item-description');
+  const descCounter = document.getElementById('desc-char-count');
+  const cityInput = document.getElementById('item-city');
+  const locationInput = document.getElementById('item-location');
+  const rentAmtInput = document.getElementById('item-rent-amount');
+  const rentPeriodSelect = document.getElementById('item-rent-period');
+  const sellPriceInput = document.getElementById('item-price');
+  const exchangePrefInput = document.getElementById('item-exchange-pref');
+  const agreementCheck = document.getElementById('agreement');
+
+  // Condition card selector
+  const condButtons = document.querySelectorAll('#condition-cards-group .r2c-cond-card');
+  condButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const chosen = btn.getAttribute('data-condition') || '';
+      if (conditionInput) conditionInput.value = chosen;
+      condButtons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle('is-selected', active);
+        b.setAttribute('aria-checked', active ? 'true' : 'false');
+      });
+      clearFieldError('item-condition');
+      updateLivePreviewAndChecklist();
+    });
+  });
+
+  function setInputsDisabled(container, disabled) {
+    if (!container) return;
+    container.querySelectorAll('input, select, textarea').forEach((inp) => {
+      inp.disabled = disabled;
+    });
+  }
+
+  function updatePricingContainers() {
+    if (radioRent && radioRent.checked) {
+      containerRent.classList.remove('d-none');
+      setInputsDisabled(containerRent, false);
+      containerExchange.classList.add('d-none');
+      setInputsDisabled(containerExchange, true);
+      containerSell.classList.add('d-none');
+      setInputsDisabled(containerSell, true);
+      if (dealTitleEl) dealTitleEl.textContent = 'Rental Pricing & Availability';
+      if (dealSubEl) dealSubEl.textContent = 'Set a fair campus rental rate and duration.';
+      if (dealBadgeEl) dealBadgeEl.textContent = 'RENT DETAILS';
+    } else if (radioExchange && radioExchange.checked) {
+      containerRent.classList.add('d-none');
+      setInputsDisabled(containerRent, true);
+      containerExchange.classList.remove('d-none');
+      setInputsDisabled(containerExchange, false);
+      containerSell.classList.add('d-none');
+      setInputsDisabled(containerSell, true);
+      if (dealTitleEl) dealTitleEl.textContent = 'Swap / Exchange Preferences';
+      if (dealSubEl) dealSubEl.textContent = 'Tell fellow students what item(s) you would like in exchange.';
+      if (dealBadgeEl) dealBadgeEl.textContent = 'SWAP DETAILS';
+    } else if (radioSell && radioSell.checked) {
+      containerRent.classList.add('d-none');
+      setInputsDisabled(containerRent, true);
+      containerExchange.classList.add('d-none');
+      setInputsDisabled(containerExchange, true);
+      containerSell.classList.remove('d-none');
+      setInputsDisabled(containerSell, false);
+      if (dealTitleEl) dealTitleEl.textContent = 'Direct Selling Price';
+      if (dealSubEl) dealSubEl.textContent = 'Set a student-friendly direct sale price.';
+      if (dealBadgeEl) dealBadgeEl.textContent = 'SELL DETAILS';
+    }
+    clearFieldError('item-rent-amount');
+    clearFieldError('item-price');
+    clearFieldError('item-exchange-pref');
+    updateLivePreviewAndChecklist();
+  }
+
+  [radioRent, radioExchange, radioSell].forEach((r) => {
+    if (r) r.addEventListener('change', updatePricingContainers);
+  });
+
+  // Character counter for description
+  function updateDescCounter() {
+    if (!descTextarea || !descCounter) return;
+    const len = descTextarea.value.length;
+    descCounter.textContent = `${len} / 1200`;
+    descCounter.classList.toggle('is-ok', len >= 10 && len < 1100);
+    descCounter.classList.toggle('is-warn', len >= 1100);
+  }
+
+  // Inline Field Errors
+  function setFieldError(fieldId, msg) {
+    const field = document.getElementById(fieldId);
+    const errBox = document.getElementById(`err-${fieldId}`);
+    if (field && field.type !== 'hidden') {
+      field.classList.add('is-invalid');
+    }
+    if (errBox) {
+      const span = errBox.querySelector('span');
+      if (span) span.textContent = msg;
+      errBox.classList.add('is-visible');
+    }
+  }
+
+  function clearFieldError(fieldId) {
+    const field = document.getElementById(fieldId);
+    const errBox = document.getElementById(`err-${fieldId}`);
+    if (field) field.classList.remove('is-invalid');
+    if (errBox) errBox.classList.remove('is-visible');
+  }
+
+  function clearAllFieldErrors() {
+    document.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.r2c-field-error.is-visible').forEach((el) => el.classList.remove('is-visible'));
+  }
+
+  // Live Card Preview & Readiness Checklist Sync
+  function setChecklistRow(rowId, done) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    row.classList.toggle('is-done', Boolean(done));
+    const icon = row.querySelector('i');
+    if (icon) {
+      icon.className = done ? 'bi bi-check-circle-fill' : 'bi bi-circle';
+    }
+  }
+
+  function syncMobilePreviewClone() {
+    const mobileCollapse = document.getElementById('mobile-preview-collapse');
+    const mobileSlot = document.getElementById('mobile-preview-slot');
+    const previewCard = document.getElementById('live-preview-card');
+    if (!mobileCollapse || !mobileSlot || !previewCard || !mobileCollapse.classList.contains('show')) return;
+    mobileSlot.innerHTML = '';
+    const clone = previewCard.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+    mobileSlot.appendChild(clone);
+  }
+
+  function updateLivePreviewAndChecklist() {
+    const titleVal = (titleInput?.value || '').trim();
+    const catVal = (categorySelect?.value || '').trim();
+    const condVal = (conditionInput?.value || '').trim();
+    const descVal = (descTextarea?.value || '').trim();
+    const cityVal = (cityInput?.value || '').trim();
+    const locVal = (locationInput?.value || '').trim();
+
+    const prevTitle = document.getElementById('prev-title');
+    const prevCat = document.getElementById('prev-cat');
+    const prevCond = document.getElementById('prev-cond');
+    const prevCity = document.getElementById('prev-city');
+    const prevDesc = document.getElementById('prev-desc');
+    const prevTypeBadge = document.getElementById('prev-type-badge');
+    const prevPrice = document.getElementById('prev-price');
+    const prevSwapHint = document.getElementById('prev-swap-hint');
+    const prevImg = document.getElementById('prev-img');
+    const prevPhotoMeta = document.getElementById('prev-photo-meta');
+    const prevPhotoCount = document.getElementById('prev-photo-count');
+
+    if (prevTitle) prevTitle.textContent = titleVal || 'Your Product Title';
+    if (prevCat) prevCat.textContent = catVal || 'Category';
+    if (prevCond) prevCond.textContent = condVal || 'Condition';
+    if (prevCity) prevCity.textContent = cityVal || 'Campus';
+    if (prevDesc) prevDesc.textContent = descVal || 'Your product description will appear here as you type...';
+
+    const uploader = window.r2sUploader;
+    const photoCount = (uploader && Array.isArray(uploader.selectedFiles)) ? uploader.selectedFiles.length : 0;
+    const coverUrl = (uploader && typeof uploader.getCoverPreviewUrl === 'function') ? uploader.getCoverPreviewUrl() : null;
+    if (prevImg) {
+      prevImg.src = coverUrl || R2C_CATEGORY_PLACEHOLDERS[catVal] || R2C_CATEGORY_PLACEHOLDERS['__default__'];
+    }
+    if (prevPhotoMeta && prevPhotoCount) {
+      prevPhotoMeta.classList.toggle('d-none', photoCount <= 1);
+      prevPhotoCount.textContent = String(photoCount);
+    }
+
+    let dealComplete = false;
+    if (radioRent && radioRent.checked) {
+      if (prevTypeBadge) {
+        prevTypeBadge.className = 'r2l-type-badge r2l-type-rent';
+        prevTypeBadge.textContent = 'RENT';
+      }
+      const amt = parseFloat(rentAmtInput?.value || '0');
+      const unit = (rentPeriodSelect?.value || 'Day').toLowerCase();
+      dealComplete = !isNaN(amt) && amt > 0;
+      if (prevPrice) {
+        prevPrice.className = 'r2l-price r2l-price-rent';
+        prevPrice.innerHTML = `₹${dealComplete ? Math.round(amt).toLocaleString('en-IN') : '0'}<span class="r2l-price-unit">/${escapeHtml(unit)}</span>`;
+      }
+      if (prevSwapHint) prevSwapHint.classList.add('d-none');
+    } else if (radioSell && radioSell.checked) {
+      if (prevTypeBadge) {
+        prevTypeBadge.className = 'r2l-type-badge r2l-type-sell';
+        prevTypeBadge.textContent = 'SELL';
+      }
+      const amt = parseFloat(sellPriceInput?.value || '0');
+      dealComplete = !isNaN(amt) && amt > 0;
+      if (prevPrice) {
+        prevPrice.className = 'r2l-price r2l-price-sell';
+        prevPrice.textContent = `₹${dealComplete ? Math.round(amt).toLocaleString('en-IN') : '0'}`;
+      }
+      if (prevSwapHint) prevSwapHint.classList.add('d-none');
+    } else {
+      if (prevTypeBadge) {
+        prevTypeBadge.className = 'r2l-type-badge r2l-type-swap';
+        prevTypeBadge.textContent = 'SWAP';
+      }
+      const pref = (exchangePrefInput?.value || '').trim();
+      dealComplete = pref.length >= 3;
+      if (prevPrice) {
+        prevPrice.className = 'r2l-price r2l-price-swap';
+        prevPrice.textContent = 'Available for Exchange';
+      }
+      if (prevSwapHint) {
+        if (pref) {
+          prevSwapHint.classList.remove('d-none');
+          prevSwapHint.textContent = `For: ${pref}`;
+        } else {
+          prevSwapHint.classList.add('d-none');
+        }
+      }
+    }
+
+    const basicOk = titleVal.length >= 3 && Boolean(catVal) && Boolean(condVal);
+    const descOk = descVal.length >= 10;
+    const photosOk = photoCount > 0;
+    const handoverOk = Boolean(cityVal) && Boolean(locVal);
+
+    setChecklistRow('chk-basic', basicOk && descOk);
+    setChecklistRow('chk-desc', descOk);
+    setChecklistRow('chk-photos', photosOk);
+    setChecklistRow('chk-deal', dealComplete);
+    setChecklistRow('chk-handover', handoverOk);
+
+    document.getElementById('step-pill-basic')?.classList.toggle('is-complete', basicOk && descOk);
+    document.getElementById('step-pill-images')?.classList.toggle('is-complete', photosOk);
+    document.getElementById('step-pill-pricing')?.classList.toggle('is-complete', dealComplete);
+    document.getElementById('step-pill-handover')?.classList.toggle('is-complete', handoverOk);
+
+    const readyScore = [basicOk, descOk, photosOk, dealComplete, handoverOk].filter(Boolean).length;
+    const countEl = document.getElementById('readiness-count');
+    if (countEl) countEl.textContent = `${readyScore} / 5 ready`;
+
+    syncMobilePreviewClone();
+  }
+
+  // Mobile preview expand sync
+  const mobilePreviewEl = document.getElementById('mobile-preview-collapse');
+  if (mobilePreviewEl) {
+    mobilePreviewEl.addEventListener('shown.bs.collapse', syncMobilePreviewClone);
+  }
+
+  // Dropzone keyboard accessibility
+  const dropZoneEl = document.getElementById('image-drop-zone');
+  if (dropZoneEl) {
+    dropZoneEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('item-images')?.click();
+      }
+    });
+  }
+
+  // Upload progress bar helpers
+  const uploadProgWrap = document.getElementById('image-upload-progress');
+  const uploadProgFill = document.getElementById('upload-progress-fill');
+  const uploadProgLabel = document.getElementById('upload-progress-label');
+  const uploadProgPct = document.getElementById('upload-progress-pct');
+
+  function setUploadProgress(visible, pct, label) {
+    if (!uploadProgWrap) return;
+    if (!visible) {
+      uploadProgWrap.classList.add('d-none');
+      return;
+    }
+    const clamped = Math.max(0, Math.min(100, Math.round(pct || 0)));
+    uploadProgWrap.classList.remove('d-none');
+    if (uploadProgFill) uploadProgFill.style.width = `${clamped}%`;
+    if (uploadProgPct) uploadProgPct.textContent = `${clamped}%`;
+    if (uploadProgLabel && label) uploadProgLabel.textContent = label;
+  }
+
+  // Resilient Form Submission + Upload Pipeline (Preserved)
+  const listingForm = document.getElementById('create-listing-form');
+  const submitBtn = document.getElementById('submit-listing-btn');
+  const alertContainer = document.getElementById('form-alert-container');
+
+  const UPLOAD_STALL_TIMEOUT_MS = 60000;
+  const SERVER_PROCESSING_TIMEOUT_MS = 120000;
+  const HARD_UPLOAD_CAP_MS = 240000;
+
+  let isSubmitting = false;
+  let activeXhr = null;
+  let clientSubmissionId = null;
+
+  function generateSubmissionId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return 'r2s-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showFormAlert(msg, type = 'danger') {
+    if (!alertContainer) return;
+    const icon = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+    alertContainer.innerHTML = `
+      <div class="alert alert-${type} alert-dismissible fade show shadow-sm py-2 px-3 small mb-4" role="alert">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi ${icon} fs-5"></i>
+          <div>${escapeHtml(msg)}</div>
+        </div>
+        <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    `;
+    alertContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function clearFormAlert() {
+    if (alertContainer) alertContainer.innerHTML = '';
+  }
+
+  function setButtonLoading(loading, customLabel) {
+    if (!submitBtn) return;
+    if (loading) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="width: 1rem; height: 1rem;"></span>
+        <span>${escapeHtml(customLabel || 'Publishing...')}</span>
+      `;
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `
+        <i class="bi bi-cloud-arrow-up-fill me-1" aria-hidden="true"></i>
+        <span>Publish Listing</span>
+      `;
+    }
+  }
+
+  if (listingForm) {
+    const onFormEdit = (e) => {
+      if (e && e.target && e.target.id) {
+        clearFieldError(e.target.id);
+      }
+      if (!isSubmitting) {
+        clientSubmissionId = null;
+      }
+      updateDescCounter();
+      updateLivePreviewAndChecklist();
+    };
+    listingForm.addEventListener('input', onFormEdit);
+    listingForm.addEventListener('change', onFormEdit);
+    listingForm.addEventListener('r2s:files-changed', () => {
+      if (!isSubmitting) clientSubmissionId = null;
+      updateLivePreviewAndChecklist();
+    });
+    listingForm.addEventListener('r2s:uploader-state', (e) => {
+      if (!isSubmitting && e && e.detail) {
+        if (e.detail.busy) {
+          setUploadProgress(true, 15, 'Optimizing selected photos...');
+        } else {
+          setUploadProgress(false);
+        }
+      }
+    });
+  }
+
+  window.addEventListener('pageshow', function () {
+    if (activeXhr) {
+      try { activeXhr.abort(); } catch (_) {}
+      activeXhr = null;
+    }
+    isSubmitting = false;
+    setButtonLoading(false);
+    setUploadProgress(false);
+    updatePricingContainers();
+    updateDescCounter();
+  });
+
+  const uploadedPhotoUrls = new WeakMap();
+
+  function parseJsonSafely(res) {
+    if (!res || !res.responseText) return null;
+    const trimmed = res.responseText.trim();
+    if (!res.contentType.includes('application/json') && !trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function appendAjaxParam(url) {
+    return url.includes('?') ? `${url}&ajax=1` : `${url}?ajax=1`;
+  }
+
+  function delayMs(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function checkServerSubmissionSaved(submissionKey, retries = 1) {
+    if (!submissionKey) return { found: false };
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const resp = await fetch(`/api/check-listing-submission?key=${encodeURIComponent(submissionKey)}&ajax=1`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        if (resp.status === 401 || (resp.redirected && resp.url && resp.url.includes('/login'))) {
+          return { found: false, unauthorized: true, redirect: resp.url || '/login' };
+        }
+        if (resp.ok) {
+          const data = await resp.json().catch(() => null);
+          if (data && data.found) {
+            return { found: true, redirect_url: data.redirect_url || '/marketplace', item_id: data.item_id };
+          }
+        }
+      } catch (_) {}
+      if (attempt < retries) {
+        await delayMs(800);
+      }
+    }
+    return { found: false };
+  }
+
+  function sendListingXhr(postUrl, formData, hasPhotos, progressPrefix, onProgressPct) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      activeXhr = xhr;
+
+      let settled = false;
+      let stallTimer = null;
+      let serverTimer = null;
+      let hardTimer = null;
+      let lastLoaded = -1;
+      let uploadCompleted = false;
+
+      function clearAllTimers() {
+        if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+        if (serverTimer) { clearTimeout(serverTimer); serverTimer = null; }
+        if (hardTimer) { clearTimeout(hardTimer); hardTimer = null; }
+      }
+
+      function failWith(code, message) {
+        if (settled) return;
+        settled = true;
+        clearAllTimers();
+        if (activeXhr === xhr) activeXhr = null;
+        try { xhr.abort(); } catch (_) {}
+        const err = new Error(message);
+        err.code = code;
+        reject(err);
+      }
+
+      function armStallTimer() {
+        if (stallTimer) clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+          failWith(
+            'UPLOAD_STALL_TIMEOUT',
+            'Upload connection stalled with no data progress. Please check your connection and try again.'
+          );
+        }, UPLOAD_STALL_TIMEOUT_MS);
+      }
+
+      function armServerTimer() {
+        if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+        if (serverTimer) clearTimeout(serverTimer);
+        serverTimer = setTimeout(() => {
+          failWith(
+            'SERVER_PROCESSING_TIMEOUT',
+            'The server took too long to finish saving your listing. Please try again.'
+          );
+        }, SERVER_PROCESSING_TIMEOUT_MS);
+      }
+
+      hardTimer = setTimeout(() => {
+        failWith(
+          'HARD_TIMEOUT',
+          'Publishing took longer than expected. Please check your connection and try again.'
+        );
+      }, HARD_UPLOAD_CAP_MS);
+
+      xhr.open('POST', appendAjaxParam(postUrl), true);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.setRequestHeader('Accept', 'application/json');
+
+      armStallTimer();
+
+      xhr.upload.onprogress = function (evt) {
+        if (settled) return;
+        if (evt.loaded > lastLoaded) {
+          lastLoaded = evt.loaded;
+          if (!uploadCompleted) armStallTimer();
+        }
+        if (evt.lengthComputable && evt.total > 0) {
+          const pct = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+          if (typeof onProgressPct === 'function') {
+            onProgressPct(pct);
+          }
+          if (evt.loaded >= evt.total) {
+            setButtonLoading(true, progressPrefix ? `${progressPrefix} finalizing...` : 'Saving listing...');
+          } else if (hasPhotos) {
+            setButtonLoading(true, progressPrefix ? `${progressPrefix} ${pct}%` : `Uploading photos... ${pct}%`);
+          } else {
+            setButtonLoading(true, 'Publishing...');
+          }
+        }
+      };
+
+      xhr.upload.onload = function () {
+        if (settled) return;
+        uploadCompleted = true;
+        if (typeof onProgressPct === 'function') onProgressPct(100);
+        setButtonLoading(true, progressPrefix ? `${progressPrefix} saving...` : 'Saving listing...');
+        armServerTimer();
+      };
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.HEADERS_RECEIVED && serverTimer) {
+          clearTimeout(serverTimer);
+          serverTimer = setTimeout(() => {
+            failWith('SERVER_PROCESSING_TIMEOUT', 'Interrupted while reading server response. Please try again.');
+          }, 30000);
+        }
+      };
+
+      xhr.onload = function () {
+        if (settled) return;
+        settled = true;
+        clearAllTimers();
+        if (activeXhr === xhr) activeXhr = null;
+        resolve({
+          status: xhr.status,
+          responseURL: xhr.responseURL || '',
+          contentType: (xhr.getResponseHeader('content-type') || '').toLowerCase(),
+          responseText: xhr.responseText || ''
+        });
+      };
+
+      xhr.onerror = function () {
+        failWith('NETWORK_ERROR', 'Network connection was interrupted while uploading your listing.');
+      };
+
+      xhr.onabort = function () {
+        failWith('ABORTED', 'Upload was cancelled.');
+      };
+
+      xhr.ontimeout = function () {
+        failWith('UPLOAD_STALL_TIMEOUT', 'Publishing timed out while communicating with the server.');
+      };
+
+      xhr.send(formData);
+    });
+  }
+
+  async function preUploadPhotosIndividually(files) {
+    const urls = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const basePct = (i / files.length) * 100;
+      const slicePct = 100 / files.length;
+
+      if (uploadedPhotoUrls.has(file)) {
+        urls.push(uploadedPhotoUrls.get(file));
+        setUploadProgress(true, basePct + slicePct, `Uploaded ${i + 1} of ${files.length} photos`);
+        continue;
+      }
+
+      const maxAttempts = 3;
+      let uploadedUrl = null;
+      let lastErr = null;
+      let endpointUnavailable = false;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const prefix = `Uploading photo ${i + 1}/${files.length}`;
+        setButtonLoading(true, attempt > 1 ? `${prefix} (retry ${attempt - 1})...` : `${prefix}...`);
+        setUploadProgress(true, basePct, attempt > 1 ? `${prefix} (retrying)...` : prefix);
+
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('_ajax', '1');
+
+        try {
+          const res = await sendListingXhr('/api/upload-listing-photo', fd, true, prefix, (pct) => {
+            setUploadProgress(true, basePct + (pct / 100) * slicePct, `${prefix}...`);
+          });
+          if (res.status === 404 || res.status === 405) {
+            endpointUnavailable = true;
+            break;
+          }
+          if (res.status === 401 || (res.responseURL && res.responseURL.includes('/login'))) {
+            const authErr = new Error('Your session expired. Please sign in again to publish your listing.');
+            authErr.code = 'UNAUTHORIZED';
+            authErr.redirect = (res.responseURL && res.responseURL.includes('/login')) ? res.responseURL : '/login';
+            throw authErr;
+          }
+
+          const data = parseJsonSafely(res);
+          if (res.status >= 200 && res.status < 300 && data && data.success && data.url) {
+            uploadedUrl = data.url;
+            uploadedPhotoUrls.set(file, uploadedUrl);
+            break;
+          }
+
+          if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+            const valErr = new Error((data && data.message) || `Photo "${file.name}" could not be uploaded.`);
+            valErr.code = 'VALIDATION_ERROR';
+            throw valErr;
+          }
+
+          lastErr = new Error((data && data.message) || `Photo upload failed (HTTP ${res.status}).`);
+        } catch (err) {
+          if (err && (err.code === 'UNAUTHORIZED' || err.code === 'VALIDATION_ERROR' || err.code === 'ABORTED')) {
+            throw err;
+          }
+          lastErr = err;
+        }
+
+        if (attempt < maxAttempts) {
+          await delayMs(700 * attempt);
+        }
+      }
+
+      if (endpointUnavailable) {
+        return { fallbackToDirectMultipart: true, urls: [] };
+      }
+      if (!uploadedUrl) {
+        throw lastErr || new Error(`Could not upload photo "${file.name}". Please check your connection and try again.`);
+      }
+      urls.push(uploadedUrl);
+    }
+    setUploadProgress(true, 100, `All ${files.length} photo(s) uploaded! Saving listing...`);
+    return { fallbackToDirectMultipart: false, urls };
+  }
+
+  async function sendListingWithRetry(postUrl, buildFormData, hasPhotos, submissionKey) {
+    const maxAttempts = 3;
+    let lastRes = null;
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt > 1) {
+        const preCheck = await checkServerSubmissionSaved(submissionKey, 1);
+        if (preCheck.found || preCheck.unauthorized) {
+          return { recoveredCheck: preCheck };
+        }
+        setButtonLoading(true, `Reconnecting & publishing (${attempt}/${maxAttempts})...`);
+        await delayMs(700 * (attempt - 1));
+      }
+
+      try {
+        const res = await sendListingXhr(postUrl, buildFormData(), hasPhotos, null, (pct) => {
+          if (hasPhotos) setUploadProgress(true, pct, 'Uploading listing & photos...');
+        });
+        lastRes = res;
+
+        const data = parseJsonSafely(res);
+        const isRedirectedItem = res.responseURL && /\/item\/\d+/.test(res.responseURL);
+        const isLoginRedirect = res.responseURL && res.responseURL.includes('/login');
+        const isTransientGateway = res.status === 502 || res.status === 503 || res.status === 504;
+        const isUnexpectedHtml200 = res.status >= 200 && res.status < 300 && !data && !isRedirectedItem && !isLoginRedirect;
+
+        if ((isTransientGateway || isUnexpectedHtml200) && attempt < maxAttempts) {
+          const check = await checkServerSubmissionSaved(submissionKey, 0);
+          if (check.found || check.unauthorized) {
+            return { recoveredCheck: check };
+          }
+          continue;
+        }
+
+        return { res, data };
+      } catch (err) {
+        lastErr = err;
+        const code = err && err.code;
+        const retryable = (
+          code === 'NETWORK_ERROR' ||
+          code === 'UPLOAD_STALL_TIMEOUT' ||
+          code === 'SERVER_PROCESSING_TIMEOUT'
+        );
+        if (retryable && attempt < maxAttempts) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (lastRes) {
+      return { res: lastRes, data: parseJsonSafely(lastRes) };
+    }
+    throw lastErr || new Error('Network connection was interrupted while uploading your listing.');
+  }
+
+  function scrollToAndFocus(elOrId) {
+    const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof el.focus === 'function' && el.type !== 'hidden') {
+      try { el.focus({ preventScroll: true }); } catch (_) {}
+    }
+  }
+
+  if (listingForm) {
+    listingForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      clearFormAlert();
+      clearAllFieldErrors();
+
+      if (isSubmitting) return;
+
+      // 1. Client-Side Required Field Validations (Inline near fields)
+      const title = (titleInput?.value || '').trim();
+      if (title.length < 3) {
+        setFieldError('item-title', 'Product title must be at least 3 characters.');
+        showFormAlert('Please check the highlighted field(s) before publishing.');
+        scrollToAndFocus(titleInput);
+        return;
+      }
+
+      const category = categorySelect?.value;
+      if (!category) {
+        setFieldError('item-category', 'Please select a product category.');
+        showFormAlert('Please check the highlighted field(s) before publishing.');
+        scrollToAndFocus(categorySelect);
+        return;
+      }
+
+      const condition = conditionInput?.value;
+      if (!condition) {
+        setFieldError('item-condition', 'Please choose the current condition of your product.');
+        showFormAlert('Please select your product condition.');
+        scrollToAndFocus('condition-cards-group');
+        return;
+      }
+
+      const desc = (descTextarea?.value || '').trim();
+      if (desc.length < 10) {
+        setFieldError('item-description', 'Please write a clear description (at least 10 characters).');
+        showFormAlert('Please add a brief description of your product.');
+        scrollToAndFocus(descTextarea);
+        return;
+      }
+
+      if (window.r2sUploader && window.r2sUploader.isBusy && window.r2sUploader.isBusy()) {
+        showFormAlert('Images are still finishing preparation. Please wait a moment and click Publish again.', 'warning');
+        return;
+      }
+
+      // Deal-type specific validation
+      if (radioRent && radioRent.checked) {
+        const rentAmtStr = (rentAmtInput?.value || '').trim();
+        const rentAmt = parseFloat(rentAmtStr);
+        if (!rentAmtStr || isNaN(rentAmt) || rentAmt <= 0) {
+          setFieldError('item-rent-amount', 'Enter a valid rental rate greater than ₹0.');
+          showFormAlert('Please enter a valid rental price.');
+          scrollToAndFocus(rentAmtInput);
+          return;
+        }
+      } else if (radioSell && radioSell.checked) {
+        const sellPriceStr = (sellPriceInput?.value || '').trim();
+        const sellPrice = parseFloat(sellPriceStr);
+        if (!sellPriceStr || isNaN(sellPrice) || sellPrice <= 0) {
+          setFieldError('item-price', 'Enter a valid selling price greater than ₹0.');
+          showFormAlert('Please enter a valid selling price.');
+          scrollToAndFocus(sellPriceInput);
+          return;
+        }
+      } else if (radioExchange && radioExchange.checked) {
+        const swapPref = (exchangePrefInput?.value || '').trim();
+        if (swapPref.length < 3) {
+          setFieldError('item-exchange-pref', 'Specify what item you want in exchange (at least 3 characters).');
+          showFormAlert('Please describe what item(s) you want to swap for.');
+          scrollToAndFocus(exchangePrefInput);
+          return;
+        }
+      }
+
+      const city = (cityInput?.value || '').trim();
+      if (!city) {
+        setFieldError('item-city', 'Please enter your city.');
+        showFormAlert('Please enter your city.');
+        scrollToAndFocus(cityInput);
+        return;
+      }
+
+      const location = (locationInput?.value || '').trim();
+      if (!location) {
+        setFieldError('item-location', 'Please enter a public campus handover spot.');
+        showFormAlert('Please enter your campus handover spot.');
+        scrollToAndFocus(locationInput);
+        return;
+      }
+
+      if (agreementCheck && !agreementCheck.checked) {
+        setFieldError('agreement', 'Please accept the campus handover agreement to continue.');
+        showFormAlert('Please confirm the campus handover agreement.');
+        scrollToAndFocus(agreementCheck);
+        return;
+      }
+
+      // 2. Enter lock + loading state
+      isSubmitting = true;
+      setButtonLoading(true, 'Publishing...');
+      let navigating = false;
+
+      try {
+        if (window.r2sUploader && typeof window.r2sUploader.waitForReady === 'function') {
+          await window.r2sUploader.waitForReady();
+        }
+
+        if (window.r2sUploader) {
+          window.r2sUploader.syncToInput();
+          if (typeof window.r2sUploader.validateBeforeSubmit === 'function') {
+            const imgCheck = window.r2sUploader.validateBeforeSubmit();
+            if (!imgCheck.ok) {
+              showFormAlert(imgCheck.message);
+              return;
+            }
+          }
+        }
+
+        if (!clientSubmissionId) {
+          clientSubmissionId = generateSubmissionId();
+        }
+
+        const fileInput = document.getElementById('item-images');
+        const filesToUpload = (window.r2sUploader && Array.isArray(window.r2sUploader.selectedFiles))
+          ? window.r2sUploader.selectedFiles.slice()
+          : (fileInput && fileInput.files ? Array.from(fileInput.files) : []);
+
+        let preuploadedUrls = [];
+        let attachRawFiles = false;
+        if (filesToUpload.length > 0) {
+          const uploadOutcome = await preUploadPhotosIndividually(filesToUpload);
+          if (uploadOutcome.fallbackToDirectMultipart) {
+            attachRawFiles = true;
+          } else {
+            preuploadedUrls = uploadOutcome.urls;
+          }
+        }
+
+        setButtonLoading(true, 'Publishing listing...');
+
+        const postUrl = listingForm.getAttribute('action') || '/add-listing';
+        const buildSubmitFormData = () => {
+          const fd = new FormData(listingForm);
+          fd.set('idempotency_key', clientSubmissionId);
+          fd.set('_ajax', '1');
+          fd.delete('images');
+          fd.delete('uploaded_image_urls');
+          if (attachRawFiles) {
+            filesToUpload.forEach(file => fd.append('images', file));
+          } else {
+            preuploadedUrls.forEach(u => fd.append('uploaded_image_urls', u));
+          }
+          return fd;
+        };
+
+        const outcome = await sendListingWithRetry(
+          postUrl,
+          buildSubmitFormData,
+          attachRawFiles && filesToUpload.length > 0,
+          clientSubmissionId
+        );
+
+        if (outcome.recoveredCheck) {
+          if (outcome.recoveredCheck.found) {
+            navigating = true;
+            clientSubmissionId = null;
+            setButtonLoading(true, 'Published! Redirecting...');
+            showFormAlert('Your listing was published successfully! Redirecting...', 'success');
+            setTimeout(() => { window.location.href = outcome.recoveredCheck.redirect_url; }, 250);
+            return;
+          }
+          if (outcome.recoveredCheck.unauthorized) {
+            navigating = true;
+            showFormAlert('Your session expired. Please sign in again to publish your listing.', 'danger');
+            setTimeout(() => { window.location.href = outcome.recoveredCheck.redirect || '/login'; }, 1200);
+            return;
+          }
+        }
+
+        const res = outcome.res;
+        const data = outcome.data || parseJsonSafely(res);
+
+        if (res.responseURL && res.responseURL.includes('/login')) {
+          showFormAlert('Your session expired. Please sign in again to publish your listing.', 'danger');
+          navigating = true;
+          setTimeout(() => { window.location.href = res.responseURL; }, 1200);
+          return;
+        }
+
+        if (res.status >= 200 && res.status < 300 && data && data.success) {
+          navigating = true;
+          clientSubmissionId = null;
+          setButtonLoading(true, 'Published! Redirecting...');
+          showFormAlert(data.message || 'Your listing has been published successfully!', 'success');
+          const targetUrl = data.redirect_url || '/marketplace';
+          setTimeout(() => { window.location.href = targetUrl; }, 250);
+          setTimeout(() => {
+            isSubmitting = false;
+            setButtonLoading(false);
+          }, 6000);
+          return;
+        }
+
+        if (res.status >= 200 && res.status < 300 && res.responseURL && /\/item\/\d+/.test(res.responseURL)) {
+          navigating = true;
+          clientSubmissionId = null;
+          setButtonLoading(true, 'Published! Redirecting...');
+          showFormAlert('Your listing has been published successfully!', 'success');
+          setTimeout(() => { window.location.href = res.responseURL; }, 250);
+          return;
+        }
+
+        if (res.status >= 200 && res.status < 300) {
+          const check200 = await checkServerSubmissionSaved(clientSubmissionId, 1);
+          if (check200.found) {
+            navigating = true;
+            clientSubmissionId = null;
+            setButtonLoading(true, 'Published! Redirecting...');
+            showFormAlert('Your listing was published successfully! Redirecting...', 'success');
+            setTimeout(() => { window.location.href = check200.redirect_url; }, 250);
+            return;
+          }
+          if (check200.unauthorized) {
+            navigating = true;
+            showFormAlert('Your session expired. Please sign in again to publish your listing.', 'danger');
+            setTimeout(() => { window.location.href = check200.redirect || '/login'; }, 1200);
+            return;
+          }
+        }
+
+        if (res.status === 401) {
+          showFormAlert((data && data.message) || 'Please sign in again to publish your listing.', 'danger');
+          navigating = true;
+          setTimeout(() => { window.location.href = (data && data.redirect) ? data.redirect : '/login'; }, 1200);
+          return;
+        }
+
+        if (res.status === 413) {
+          showFormAlert((data && data.message) || 'Selected photos exceed the 30MB total upload limit. Please choose fewer or smaller images.', 'danger');
+          return;
+        }
+
+        if (res.status >= 400 && res.status < 500) {
+          clientSubmissionId = null;
+        }
+
+        const errorMsg = (data && data.message)
+          ? data.message
+          : (res.status >= 200 && res.status < 300
+              ? 'Your listing could not be confirmed by the server. Please click Publish again—your details and photos are saved.'
+              : `Publishing failed (HTTP ${res.status}). Please verify your details and try again.`);
+        showFormAlert(errorMsg, 'danger');
+      } catch (err) {
+        if (err && err.code === 'UNAUTHORIZED') {
+          navigating = true;
+          showFormAlert(err.message || 'Your session expired. Please sign in again to publish your listing.', 'danger');
+          setTimeout(() => { window.location.href = err.redirect || '/login'; }, 1200);
+          return;
+        }
+
+        const code = err && err.code;
+        if (
+          code === 'SERVER_PROCESSING_TIMEOUT' ||
+          code === 'UPLOAD_STALL_TIMEOUT' ||
+          code === 'HARD_TIMEOUT' ||
+          code === 'NETWORK_ERROR'
+        ) {
+          setButtonLoading(true, 'Checking upload status...');
+          const check = await checkServerSubmissionSaved(clientSubmissionId, 1);
+          if (check.found) {
+            navigating = true;
+            clientSubmissionId = null;
+            setButtonLoading(true, 'Published! Redirecting...');
+            showFormAlert('Your listing was published successfully! Redirecting...', 'success');
+            setTimeout(() => { window.location.href = check.redirect_url; }, 250);
+            return;
+          }
+          if (check.unauthorized) {
+            navigating = true;
+            showFormAlert('Your session expired. Please sign in again to publish your listing.', 'danger');
+            setTimeout(() => { window.location.href = check.redirect || '/login'; }, 1200);
+            return;
+          }
+        }
+        console.warn('Publish listing error:', err);
+        showFormAlert(
+          (err && err.message) || 'Network or upload error while publishing your listing. Your form details are preserved—please try again.',
+          'danger'
+        );
+      } finally {
+        if (!navigating) {
+          isSubmitting = false;
+          setButtonLoading(false);
+          setUploadProgress(false);
+        }
+      }
+    });
+  }
+
+  // Initial sync after MultiImageUploader initializes
+  document.addEventListener('DOMContentLoaded', () => {
+    updatePricingContainers();
+    updateDescCounter();
+    updateLivePreviewAndChecklist();
+  });
+</script>
+<script src="{{ url_for('static', filename='js/multi-image-uploader.js') }}"></script>
+{% endblock %}

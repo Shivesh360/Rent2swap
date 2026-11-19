@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - Rent2Swap{% endblock %}
+
+{% block content %}
+<!-- Floating Threads Canvas (Exclusive to Home & Auth) -->
+<canvas id="r2s-threads-canvas" style="position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1;"></canvas>
+
+<div class="container py-4" id="register-page">
+  <div class="row align-items-center justify-content-center g-4 my-2">
+    <!-- Glassmorphism Registration Form Card -->
+    <div class="col-12 col-md-9 col-lg-7 col-xl-6">
+      <div class="r2s-glass-card p-4 p-md-5">
+        <div class="text-center mb-4">
+          <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 48px; height: 48px; border-radius: 14px; font-size: 1.4rem;">
+            <i class="bi bi-person-plus-fill"></i>
+          </div>
+          <h3 class="fw-bold mb-1 text-white">Create an Account</h3>
+          <p class="text-secondary small mb-3">Join Rent2Swap to rent, sell, or exchange items with fellow students</p>
+
+          <!-- Login / Register Switcher Tabs -->
+          <div class="d-flex mb-4 auth-tab-switcher">
+            <a href="{{ url_for('login') }}" class="btn btn-sm text-secondary w-50 rounded-pill">Sign In</a>
+            <a href="{{ url_for('register') }}" class="btn btn-sm btn-r2s-primary w-50 rounded-pill">Register</a>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <!-- Full Name -->
+          <div class="mb-3">
+            <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-person"></i></span>
+              <input type="text" class="form-control r2s-input border-start-0" id="name" name="name" placeholder="e.g. Vikram Malhotra" value="{{ form_data.name if form_data else '' }}" required>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="mb-3">
+            <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control r2s-input border-start-0" id="email" name="email" placeholder="e.g. vikram@college.edu" value="{{ form_data.email if form_data else '' }}" required>
+            </div>
+            <div class="form-text small text-secondary mt-1">Used for student verification, inquiries, and login access.</div>
+          </div>
+
+          <!-- Password & Confirm Password -->
+          <!-- Password & Confirm Password -->
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-lock"></i></span>
+                <input type="password" class="form-control r2s-input border-start-0 border-end-0" id="password" name="password" placeholder="Min 6 chars" required minlength="6">
+                <button class="btn btn-outline-secondary border-start-0" style="border-color: var(--r2s-glass-border); color: var(--r2s-text-muted);" type="button" onclick="togglePasswordVisibility('password', this)">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label for="confirm_password" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-shield-check"></i></span>
+                <input type="password" class="form-control r2s-input border-start-0 border-end-0" id="confirm_password" name="confirm_password" placeholder="Re-enter password" required minlength="6">
+                <button class="btn btn-outline-secondary border-start-0" style="border-color: var(--r2s-glass-border); color: var(--r2s-text-muted);" type="button" onclick="togglePasswordVisibility('confirm_password', this)">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              <div id="passwordMismatchNotice" class="text-danger small mt-1 d-none">Passwords do not match!</div>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div class="mb-3">
+            <label for="location" class="form-label">Campus / City / Locality <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-geo-alt"></i></span>
+              <input type="text" class="form-control r2s-input border-start-0" id="location" name="location" placeholder="e.g. North Campus, Delhi or Indiranagar, Bengaluru" value="{{ form_data.location if form_data else '' }}" required>
+            </div>
+          </div>
+
+          <!-- Optional Organization / Affiliation / College -->
+          <div class="mb-3">
+            <label for="college" class="form-label">College / University Affiliation <span class="text-secondary small">(Optional)</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-building"></i></span>
+              <input type="text" class="form-control r2s-input border-start-0" id="college" name="college" placeholder="e.g. BCA Apex University, IIT, DU" value="{{ form_data.college if form_data else '' }}">
+            </div>
+          </div>
+
+          <!-- Password Recovery Security Question Setup (Compulsory for Registration) -->
+          <div class="p-3 r2s-glass-card mb-4" style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 14px;">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-shield-lock-fill text-warning fs-5"></i>
+              <div>
+                <h6 class="fw-bold text-white mb-0">Password Recovery Security Question</h6>
+                <span class="text-secondary small">Required to securely recover your account if you forget your password</span>
+              </div>
+            </div>
+
+            <!-- Security Question Dropdown -->
+            <div class="mb-3">
+              <label for="security_question" class="form-label text-white">Select a Security Question <span class="text-danger">*</span></label>
+              <select class="form-select r2s-input" id="security_question" name="security_question" required>
+                <option value="" disabled {% if not form_data or not form_data.security_question %}selected{% endif %}>-- Choose a question you will remember --</option>
+                {% for q in SECURITY_QUESTIONS %}
+                  <option value="{{ q }}" {% if form_data and form_data.security_question == q %}selected{% endif %}>{{ q }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Security Answer & Confirmation -->
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label for="security_answer" class="form-label text-white">Your Answer <span class="text-danger">*</span></label>
+                <input type="text" class="form-control r2s-input" id="security_answer" name="security_answer" placeholder="Enter your secret answer" required autocomplete="off">
+              </div>
+              <div class="col-md-6">
+                <label for="confirm_security_answer" class="form-label text-white">Confirm Answer <span class="text-danger">*</span></label>
+                <input type="text" class="form-control r2s-input" id="confirm_security_answer" name="confirm_security_answer" placeholder="Re-enter your answer" required autocomplete="off">
+              </div>
+            </div>
+            <div id="answerMismatchNotice" class="text-danger small mt-2 d-none"><i class="bi bi-exclamation-triangle-fill me-1"></i>Security answers do not match!</div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn btn-r2s-primary w-100 py-2 fs-6 shadow-sm mb-3" id="register-submit-btn">
+            <i class="bi bi-person-check-fill me-1"></i> Create Student Account
+          </button>
+
+          <div class="text-center small text-secondary">
+            Already have an account? <a href="{{ url_for('login') }}" class="fw-semibold text-decoration-none" style="color: var(--r2s-accent-violet);">Sign in here</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePasswordVisibility(fieldId, btn) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    const icon = btn.querySelector('i');
+    if (field.type === 'password') {
+      field.type = 'text';
+      if (icon) {
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+      }
+    } else {
+      field.type = 'password';
+      if (icon) {
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+      }
+    }
+  }
+
+  const regForm = document.getElementById('registerForm');
+  const pwd = document.getElementById('password');
+  const confirmPwd = document.getElementById('confirm_password');
+  const mismatchNotice = document.getElementById('passwordMismatchNotice');
+  const secAnswer = document.getElementById('security_answer');
+  const secConfirm = document.getElementById('confirm_security_answer');
+  const answerMismatchNotice = document.getElementById('answerMismatchNotice');
+  const secQuestion = document.getElementById('security_question');
+
+  function checkPasswords() {
+    if (confirmPwd.value && pwd.value !== confirmPwd.value) {
+      mismatchNotice.classList.remove('d-none');
+      return false;
+    } else {
+      mismatchNotice.classList.add('d-none');
+      return true;
+    }
+  }
+
+  function checkAnswers() {
+    if (!secAnswer || !secConfirm) return true;
+    const a1 = secAnswer.value.trim().toLowerCase();
+    const a2 = secConfirm.value.trim().toLowerCase();
+    if (a2 && a1 !== a2) {
+      answerMismatchNotice.classList.remove('d-none');
+      return false;
+    } else {
+      answerMismatchNotice.classList.add('d-none');
+      return true;
+    }
+  }
+
+  if (pwd && confirmPwd) {
+    pwd.addEventListener('input', checkPasswords);
+    confirmPwd.addEventListener('input', checkPasswords);
+  }
+
+  if (secAnswer && secConfirm) {
+    secAnswer.addEventListener('input', checkAnswers);
+    secConfirm.addEventListener('input', checkAnswers);
+  }
+
+  if (regForm) {
+    regForm.addEventListener('submit', function(e) {
+      const pValid = checkPasswords();
+      const aValid = checkAnswers();
+      if (!secQuestion.value) {
+        e.preventDefault();
+        secQuestion.focus();
+        return;
+      }
+      if (!pValid || !aValid) {
+        e.preventDefault();
+      }
+    });
+  }
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Floating Threads (Home & Auth Exclusive) -->
+<script src="{{ url_for('static', filename='js/floating-threads.js') }}"></script>
+{% endblock %}

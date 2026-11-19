@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+{% from "partials/_listing_card.html" import render_listing_card %}
+
+{% block title %}{{ item.title }} - Rent2Swap Campus Marketplace{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="item-details-page">
+
+  <!-- Breadcrumb Navigation -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{{ url_for('home') }}" class="text-secondary text-decoration-none"><i class="bi bi-house-door me-1"></i>Home</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('marketplace') }}" class="text-secondary text-decoration-none">Marketplace</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('marketplace', category=item.category) }}" class="text-secondary text-decoration-none">{{ item.category }}</a></li>
+      <li class="breadcrumb-item active text-white text-truncate" style="max-width: 260px;" aria-current="page">{{ item.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4 mb-5">
+    <!-- Left: Image Gallery & Previews -->
+    <div class="col-lg-6">
+      <div class="r2s-glass-card p-3 mb-3 text-center position-relative overflow-hidden" style="min-height: 380px; display: flex; align-items: center; justify-content: center;">
+        <img id="main-product-image" src="{{ primary_image | image_url(item.category) }}" alt="{{ item.title }}" class="img-fluid rounded-3" style="max-height: 420px; object-fit: contain;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+        
+        <!-- Status Overlay Badge -->
+        <div class="position-absolute top-0 start-0 m-3">
+          {% if item.status == 'Available' %}
+            <span class="badge-r2s badge-r2s-verified"><i class="bi bi-check-circle-fill me-1"></i>Available on Campus</span>
+          {% else %}
+            <span class="badge-r2s" style="background: rgba(100, 116, 139, 0.2); border: 1px solid rgba(148, 163, 184, 0.4); color: #cbd5e1;"><i class="bi bi-slash-circle me-1"></i>{{ item.status }}</span>
+          {% endif %}
+        </div>
+
+        {% if images and images|length > 1 %}
+          <!-- Photo Count Badge -->
+          <span class="badge-r2s badge-r2s-rent position-absolute bottom-0 end-0 m-3 shadow-sm" style="font-size: 0.72rem;">
+            <i class="bi bi-images me-1"></i>{{ images|length }} Photos
+          </span>
+        {% endif %}
+      </div>
+
+      <!-- Thumbnails if multiple images -->
+      {% if images and images|length > 1 %}
+        <div class="d-flex gap-2 overflow-auto pb-2" id="gallery-thumbnails">
+          {% for img in images %}
+            <img src="{{ img.image_path | image_url(item.category) }}" alt="Thumbnail {{ loop.index }}" class="thumbnail-img rounded-3 border {% if loop.first %}border-primary{% endif %}" style="width: 72px; height: 72px; object-fit: cover; cursor: pointer; border-color: {% if loop.first %}var(--r2s-primary){% else %}var(--r2s-glass-border){% endif %} !important; transition: border-color 0.2s ease, transform 0.2s ease;" onclick="changeMainImage(this.src, this)" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Campus Safety & Handover Card -->
+      <div class="r2s-glass-card p-3 mt-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-shield-lock-fill text-success fs-5"></i>
+          <span class="fw-bold text-white small">Campus Handover &amp; Safety Protocol</span>
+        </div>
+        <p class="small text-secondary mb-0">
+          Meet at university common spots (Library, Student Center, Campus Cafeteria). Inspect the item together before accepting. Zero deposit deductions or hidden charges.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right: Item Specifications & Deal Actions -->
+    <div class="col-lg-6">
+      <div class="r2s-glass-card p-4 h-100 d-flex flex-column">
+
+        <!-- Top Badges -->
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+          {% if item.transaction_type == 'Rent' %}
+            <span class="badge-r2s badge-r2s-rent"><i class="bi bi-clock-history me-1"></i>For Rent</span>
+          {% elif item.transaction_type == 'Sell' %}
+            <span class="badge-r2s badge-r2s-sell"><i class="bi bi-tag-fill me-1"></i>For Sale</span>
+          {% else %}
+            <span class="badge-r2s badge-r2s-swap"><i class="bi bi-arrow-left-right me-1"></i>Swap / Exchange</span>
+          {% endif %}
+
+          <span class="badge-r2s badge-condition">{{ item.category }}</span>
+          <span class="badge-r2s badge-r2s-rent">{{ item.condition }}</span>
+          {% if item.is_sample %}
+            <span class="badge-r2s r2x-sample-badge">
+              <i class="bi bi-collection me-1"></i>Sample Listing
+            </span>
+          {% endif %}
+          
+          <span class="ms-auto text-muted small">
+            <i class="bi bi-eye me-1"></i>{{ item.views_count }} views
+          </span>
+        </div>
+
+        <!-- Title -->
+        <h2 class="fw-bold text-white mb-3" style="font-size: 1.65rem;">{{ item.title }}</h2>
+
+        <!-- Pricing Highlight -->
+        <div class="p-3 r2s-glass-card mb-4" style="border-color: var(--r2s-glass-border);">
+          {% if item.transaction_type == 'Rent' %}
+            <div class="d-flex align-items-baseline gap-2">
+              <span class="text-secondary small fw-semibold">Rental Rate:</span>
+              <span class="display-6 fw-bold price-rent">₹{{ "{:,.0f}".format(item.rent_amount) }}</span>
+              <span class="text-secondary fw-semibold">/ {{ item.rent_period or 'Day' }}</span>
+            </div>
+            <div class="small text-muted mt-1">
+              <i class="bi bi-info-circle me-1"></i>Flexible student rates &bull; No credit card or deposit hold required
+            </div>
+          {% elif item.transaction_type == 'Sell' %}
+            <div class="d-flex align-items-baseline gap-2">
+              <span class="text-secondary small fw-semibold">Student Price:</span>
+              <span class="display-6 fw-bold price-sell">₹{{ "{:,.0f}".format(item.price) }}</span>
+            </div>
+            <div class="small text-muted mt-1">One-time purchase directly from verified student owner</div>
+          {% else %}
+            <div>
+              <div class="text-secondary small fw-semibold mb-1">Looking to Swap For:</div>
+              <div class="fs-5 fw-bold mb-1 price-swap">
+                <i class="bi bi-arrow-left-right me-2"></i>{{ item.exchange_preference }}
+              </div>
+              {% if item.price and item.price > 0 %}
+                <div class="small text-muted">Estimated Item Value: ₹{{ "{:,.0f}".format(item.price) }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Specifications & Details (2x2 Grid) -->
+        <h6 class="fw-bold text-white mb-2">Specifications &amp; Item Details</h6>
+        <div class="row g-2 mb-4 small">
+          <div class="col-6">
+            <div class="r2s-spec-box">
+              <span class="text-muted d-block">Brand / Make:</span>
+              <strong class="text-white">{{ item.brand or 'Unspecified' }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="r2s-spec-box">
+              <span class="text-muted d-block">Model / Edition:</span>
+              <strong class="text-white">{{ item.model or 'Standard' }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="r2s-spec-box">
+              <span class="text-muted d-block">Item Age / Usage:</span>
+              <strong class="text-white">{{ item.age or 'Not Specified' }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="r2s-spec-box">
+              <span class="text-muted d-block">Campus / City:</span>
+              <strong class="text-white"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ item.location }}, {{ item.city }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <h6 class="fw-bold text-white mb-2">Description</h6>
+        <div class="text-secondary small mb-4 lh-base" style="white-space: pre-line;">
+          {{ item.description }}
+        </div>
+
+        <!-- Peer Owner Trust Card (Privacy-Safe: No roll numbers, no private phone numbers) -->
+        <div class="p-3 r2s-glass-card mb-4">
+          <div class="d-flex align-items-center gap-3">
+            <div class="r2s-brand-logo-icon" style="width: 44px; height: 44px; border-radius: 12px; font-weight: 700; font-size: 1.1rem;">
+              {{ 'S' if item.is_sample else (item.seller_name[0] | upper) }}
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h6 class="fw-bold text-white mb-0">
+                  {{ 'Sample Catalog Account' if item.is_sample else item.seller_name }}
+                </h6>
+                {% if item.is_sample %}
+                  <span class="badge-r2s r2x-sample-badge py-0 px-2" style="font-size: 0.65rem;">
+                    <i class="bi bi-collection me-1"></i>Demo / Sample Listing
+                  </span>
+                {% elif item.seller_verification_status == 'Verified' %}
+                  <span class="badge-r2s badge-r2s-verified py-0 px-2" style="font-size: 0.65rem;">
+                    <i class="bi bi-patch-check-fill me-1"></i>Verified Student
+                  </span>
+                {% elif item.seller_verification_status == 'Pending' %}
+                  <span class="badge-r2s badge-r2s-swap py-0 px-2" style="font-size: 0.65rem; background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d;">
+                    <i class="bi bi-clock-history me-1"></i>Verification Pending
+                  </span>
+                {% endif %}
+              </div>
+              <div class="small text-muted mt-1">
+                {% if item.is_sample %}
+                  <span><i class="bi bi-info-circle me-1"></i>Demonstration catalog item &bull; Sample content for preview</span>
+                {% else %}
+                  <span><i class="bi bi-building me-1"></i>{{ item.seller_college or 'Verified Campus Member' }}</span> &bull; 
+                  <span class="text-warning"><i class="bi bi-star-fill"></i> {{ "%.1f"|format(item.seller_rating or 5.0) }} Peer Score</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-auto">
+          {% if is_owner %}
+            <!-- Owner Controls -->
+            <div class="p-3 r2s-glass-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-bold text-white"><i class="bi bi-gear-fill me-1"></i> Owner Controls</span>
+                <span class="badge-r2s badge-r2s-rent">You own this listing</span>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('edit_listing', item_id=item.item_id) }}" class="btn btn-sm btn-r2s-primary flex-grow-1" id="edit-listing-btn">
+                  <i class="bi bi-pencil-square me-1"></i> Edit Listing
+                </a>
+                
+                {% if item.status in ('Rented', 'Sold', 'Exchanged') %}
+                  <span class="btn btn-sm btn-r2s-outline disabled" title="Status is locked while item is {{ item.status }}">
+                    <i class="bi bi-lock-fill me-1"></i> Status: {{ item.status }}
+                  </span>
+                {% else %}
+                  <form action="{{ url_for('toggle_listing_status', item_id=item.item_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-outline" id="toggle-status-btn">
+                      {% if item.status == 'Available' %}
+                        <i class="bi bi-eye-slash me-1"></i> Mark Inactive
+                      {% else %}
+                        <i class="bi bi-eye me-1"></i> Mark Available
+                      {% endif %}
+                    </button>
+                  </form>
+                {% endif %}
+
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" id="delete-listing-btn">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+
+          {% else %}
+            <!-- Visitor Buyer/Renter Actions -->
+            <div class="d-grid gap-2">
+              {% if item.status != 'Available' %}
+                <div class="p-3 r2s-glass-card text-center mb-2" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4);">
+                  <i class="bi bi-info-circle text-warning fs-5 d-block mb-1"></i>
+                  <span class="text-white fw-bold d-block">Listing is Currently {{ item.status }}</span>
+                  <span class="small text-secondary">This gear is currently unavailable for new bookings.</span>
+                </div>
+                <button type="button" class="btn btn-lg btn-r2s-outline w-100 disabled text-white" disabled style="opacity: 0.65;">
+                  <i class="bi bi-lock-fill me-1"></i> Currently {{ item.status }}
+                </button>
+              {% elif session.get('user_id') %}
+                {% if current_user_profile and current_user_profile.verification_status == 'Verified' %}
+                  <button type="button" class="btn btn-lg btn-r2s-primary d-flex align-items-center justify-content-center gap-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#contactModal" id="request-deal-btn">
+                    {% if item.transaction_type == 'Rent' %}
+                      <i class="bi bi-clock-history"></i> Request to Rent Gear
+                    {% elif item.transaction_type == 'Sell' %}
+                      <i class="bi bi-cart-check"></i> Request to Buy
+                    {% else %}
+                      <i class="bi bi-arrow-left-right"></i> Propose a Swap Trade
+                    {% endif %}
+                  </button>
+                {% else %}
+                  {% set viewer_status = current_user_profile.verification_status if current_user_profile else 'Not Submitted' %}
+                  <div class="p-3 r2s-glass-card mb-1" id="item-verification-gate" style="background: rgba(124, 58, 237, 0.14); border: 1px solid rgba(168, 85, 247, 0.4);">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                      <span class="fw-bold text-white small"><i class="bi bi-shield-lock-fill text-warning me-1"></i> Student Verification Required</span>
+                      <span class="badge-r2s py-0 px-2" style="font-size: 0.68rem;">{{ viewer_status }}</span>
+                    </div>
+                    <p class="small text-secondary mb-2">
+                      {% if viewer_status == 'Pending' %}
+                        Your verification request is under review. You can browse all listings now and send requests once approved.
+                      {% elif viewer_status == 'Rejected' %}
+                        Your verification was rejected. Edit &amp; resubmit your College ID Front and Back to transact on Rent2Swap.
+                      {% else %}
+                        Verify your student identity with both College ID Front &amp; Back images to rent, buy, or swap gear.
+                      {% endif %}
+                    </p>
+                    <a href="{{ url_for('verification') }}" class="btn btn-sm {% if viewer_status == 'Rejected' %}btn-danger{% elif viewer_status == 'Pending' %}btn-r2s-outline{% else %}btn-r2s-primary{% endif %} w-100">
+                      {% if viewer_status == 'Pending' %}
+                        <i class="bi bi-pencil-square me-1"></i> Edit Verification Details
+                      {% elif viewer_status == 'Rejected' %}
+                        <i class="bi bi-arrow-repeat me-1"></i> Edit &amp; Resubmit
+                      {% else %}
+                        <i class="bi bi-shield-check me-1"></i> Verify Now
+                      {% endif %}
+                    </a>
+                  </div>
+                {% endif %}
+              {% else %}
+                <a href="{{ url_for('login', next=url_for('item_details', item_id=item.item_id)) }}" class="btn btn-lg btn-r2s-primary d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                  <i class="bi bi-box-arrow-in-right"></i> Sign In to Request Gear
+                </a>
+              {% endif %}
+
+              {% if session.get('user_id') %}
+                <form action="{{ url_for('start_conversation', item_id=item.item_id) }}" method="POST" class="d-grid mt-1">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-r2s-outline d-flex align-items-center justify-content-center gap-2" id="message-owner-btn">
+                    <i class="bi bi-chat-dots-fill"></i> Message Owner
+                  </button>
+                </form>
+              {% else %}
+                <a href="{{ url_for('login', next=url_for('item_details', item_id=item.item_id)) }}" class="btn btn-r2s-outline d-flex align-items-center justify-content-center gap-2 mt-1" id="message-owner-login-btn">
+                  <i class="bi bi-chat-dots"></i> Sign In to Message Owner
+                </a>
+              {% endif %}
+
+              <div class="text-center mt-2">
+                <button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none" data-bs-toggle="modal" data-bs-target="#reportModal" id="report-item-btn">
+                  <i class="bi bi-flag me-1"></i> Report Inappropriate Listing
+                </button>
+              </div>
+            </div>
+
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Top-level Modals for proper Bootstrap 5 backdrop layering -->
+  {% if is_owner %}
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content r2s-glass-panel text-white">
+          <div class="modal-header border-bottom border-secondary border-opacity-25">
+            <h5 class="modal-title fw-bold" id="deleteModalLabel">Confirm Deletion</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-secondary">
+            Are you sure you want to permanently delete <strong>"{{ item.title }}"</strong>? This action removes the listing from the campus marketplace.
+          </div>
+          <div class="modal-footer border-top border-secondary border-opacity-25">
+            <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+            <form action="{{ url_for('delete_listing', item_id=item.item_id) }}" method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger">Yes, Delete Listing</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <!-- Structured Rental & Agreement Modal -->
+    <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content r2s-glass-panel text-white">
+          <form action="{{ url_for('submit_rental_request', item_id=item.item_id) }}" method="POST" id="rental-request-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="request_type" value="{{ item.transaction_type }}">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+              <h5 class="modal-title fw-bold" id="contactModalLabel">
+                {% if item.transaction_type == 'Rent' %}
+                  <i class="bi bi-clock-history text-success me-2"></i>Campus Rental Request
+                {% elif item.transaction_type == 'Sell' %}
+                  <i class="bi bi-cart-check text-primary me-2"></i>Purchase Request
+                {% else %}
+                  <i class="bi bi-arrow-left-right text-warning me-2"></i>Swap Proposal
+                {% endif %}
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary">
+              <!-- Item Summary -->
+              <div class="p-3 r2s-glass-card mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="fw-bold text-white mb-0">{{ item.title }}</h6>
+                  <span class="badge-r2s {% if item.transaction_type == 'Sell' %}badge-r2s-sell{% elif item.transaction_type == 'Exchange' %}badge-r2s-swap{% else %}badge-r2s-rent{% endif %}">{{ item.transaction_type }}</span>
+                </div>
+                <div class="small text-secondary mt-1">
+                  Owner: <strong class="text-white">{{ item.seller_name }}</strong> &bull; Campus: <span class="text-white">{{ item.location }}, {{ item.city }}</span>
+                </div>
+              </div>
+
+              {% if item.transaction_type == 'Exchange' %}
+                <!-- Item to Offer in Exchange -->
+                <div class="mb-3">
+                  <label for="offered_item_id" class="form-label text-white small fw-bold">
+                    <i class="bi bi-arrow-left-right text-warning me-1"></i> Choose Your Item to Offer in Exchange <span class="text-danger">*</span>
+                  </label>
+                  {% if user_available_items %}
+                    <select name="offered_item_id" id="offered_item_id" class="form-select r2s-input text-white" required>
+                      <option value="" disabled selected>-- Select an item from your catalog --</option>
+                      {% for u_item in user_available_items %}
+                        <option value="{{ u_item.item_id }}">
+                          {{ u_item.title }} ({{ u_item.category }} - {{ u_item.condition }})
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <div class="form-text small text-secondary mt-1">
+                      The owner will review your offered item details and can accept or decline the swap.
+                    </div>
+                  {% else %}
+                    <div class="p-3 rounded-3 border" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3) !important;">
+                      <div class="text-warning small fw-bold mb-1"><i class="bi bi-exclamation-circle me-1"></i>No Available Items in Your Catalog</div>
+                      <p class="text-white-50 small mb-2">You need at least one available listing of your own to offer in a swap exchange.</p>
+                      <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary py-1 px-3">
+                        <i class="bi bi-plus-circle me-1"></i> Post an Item to Trade
+                      </a>
+                    </div>
+                  {% endif %}
+                </div>
+              {% elif item.transaction_type == 'Rent' %}
+                <!-- Rental Dates -->
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label text-white small fw-bold">Start Date</label>
+                    <input type="date" name="start_date" id="req_start_date" class="form-control r2s-input form-control-sm text-white" value="{{ today or '' }}" min="{{ today or '' }}" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-white small fw-bold">Return Due Date</label>
+                    <input type="date" name="due_date" id="req_due_date" class="form-control r2s-input form-control-sm text-white" value="{{ default_due or '' }}" min="{{ today or '' }}" required>
+                  </div>
+                </div>
+              {% endif %}
+
+              <!-- Notes / Handover Preference -->
+              <div class="mb-3">
+                <label for="req-notes" class="form-label text-white small fw-bold">Message &amp; Campus Handover Spot</label>
+                <textarea name="notes" id="req-notes" rows="2" class="form-control r2s-input text-white" placeholder="e.g. Can meet near Library steps between 2-4 PM today..."></textarea>
+              </div>
+
+              <!-- Mandatory Type-Specific Agreement Checkbox -->
+              <div class="p-3 r2s-glass-card mb-3" style="background: rgba(124, 58, 237, 0.18); border: 1px solid rgba(168, 85, 247, 0.45);">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="agreement" id="rental-agreement-check" required>
+                  <label class="form-check-label text-white small fw-semibold" for="rental-agreement-check">
+                    {% if item.transaction_type == 'Sell' %}
+                      I accept the Student Purchase &amp; Campus Handover Agreement. I will inspect the item at a public campus spot and complete payment/handover directly with the seller.
+                    {% elif item.transaction_type == 'Exchange' %}
+                      I accept the Student Swap &amp; Campus Handover Agreement. Both peers agree to inspect items together on campus before confirming the swap.
+                    {% else %}
+                      I accept the Student Rental &amp; Handover Agreement. I understand that if the item is returned damaged, I may be required to pay a penalty according to the extent and severity of the damage.
+                    {% endif %}
+                  </label>
+                </div>
+                <div class="text-secondary mt-2" style="font-size: 0.78rem;">
+                  {% if item.transaction_type == 'Sell' %}
+                    <i class="bi bi-shield-check text-success me-1"></i> Once the seller accepts your request, this listing is marked Sold and reserved for campus handover.
+                  {% elif item.transaction_type == 'Exchange' %}
+                    <i class="bi bi-shield-check text-success me-1"></i> Both items are reserved once the swap is accepted and finalized after in-person inspection.
+                  {% else %}
+                    <i class="bi bi-shield-check text-success me-1"></i> Transparent community resolution: penalties are assessed based on repair evidence, never arbitrary owner fees.
+                  {% endif %}
+                </div>
+              </div>
+
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+              <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-sm btn-r2s-primary px-4" id="confirm-request-btn" {% if item.transaction_type == 'Exchange' and not user_available_items %}disabled{% endif %}>
+                <i class="bi bi-send-fill me-1"></i>
+                {% if item.transaction_type == 'Sell' %}Send Purchase Request{% elif item.transaction_type == 'Exchange' %}Send Swap Proposal{% else %}Send Rental Request{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Listing Modal -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content r2s-glass-panel text-white">
+          <form action="{{ url_for('submit_report') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="target_type" value="Listing">
+            <input type="hidden" name="target_id" value="{{ item.item_id }}">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+              <h5 class="modal-title fw-bold" id="reportModalLabel"><i class="bi bi-flag-fill text-danger me-2"></i>Report Listing</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-secondary">
+              <div class="mb-3">
+                <label for="report-reason" class="form-label text-white small fw-bold">Reason for Report</label>
+                <select name="reason" id="report-reason" class="form-select r2s-input" required>
+                  <option value="Suspicious listing">Suspicious or fake item</option>
+                  <option value="Misleading information">Misleading photo or condition</option>
+                  <option value="Unsafe behavior">Unsafe or commercial spam</option>
+                  <option value="Other">Other policy violation</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="report-desc" class="form-label text-white small fw-bold">Details</label>
+                <textarea name="description" id="report-desc" rows="3" class="form-control r2s-input" placeholder="Explain the issue..." required minlength="10"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+              <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-sm btn-danger px-4">Submit Report</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Related Category Listings -->
+  {% if related_items %}
+    <div class="mt-5" id="related-items-section">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-white mb-0">Related Gear in {{ item.category }}</h4>
+        <a href="{{ url_for('marketplace', category=item.category) }}" class="btn btn-sm btn-r2s-outline">
+          View All <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+        </a>
+      </div>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-3">
+        {% for rel in related_items %}
+          <div class="col">
+            {{ render_listing_card(rel, card_prefix='related-card', btn_prefix='related-view', compact=true, index=loop.index0) }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+  function changeMainImage(newSrc, thumbEl) {
+    const mainImg = document.getElementById('main-product-image');
+    if (mainImg && newSrc) {
+      mainImg.onerror = function() {
+        this.onerror = null;
+        this.src = '/static/images/placeholders/default.svg';
+      };
+      mainImg.src = newSrc;
+    }
+    const thumbs = document.querySelectorAll('.thumbnail-img');
+    thumbs.forEach(t => {
+      t.style.borderColor = 'var(--r2s-glass-border)';
+      t.classList.remove('border-primary');
+    });
+    if (thumbEl) {
+      thumbEl.style.borderColor = 'var(--r2s-primary)';
+      thumbEl.classList.add('border-primary');
+    }
+  }
+</script>
+{% endblock %}

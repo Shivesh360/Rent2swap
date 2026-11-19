@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_book" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="180" fill="url(#grad_book)" />
+  <g transform="translate(0, -5)">
+    <path d="M45 50 C65 45 95 48 100 60 C105 48 135 45 155 50 L155 135 C135 130 105 132 100 142 C95 132 65 130 45 135 Z" fill="#60a5fa"/><path d="M100 60 L100 142" stroke="#1d4ed8" stroke-width="4"/>
+  </g>
+  <text x="100" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">Books & Learning</text>
+</svg>

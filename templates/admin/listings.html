@@ -1,0 +1,144 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Listing Moderation{% endblock %}
+
+{% block admin_content %}
+<div class="r2s-glass-card p-4">
+
+  <!-- Header & Search Controls -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h5 class="fw-bold text-white mb-1">Catalog Moderation ({{ listings|length }})</h5>
+      <p class="text-secondary small mb-0">Oversee active items, review reported content, and disable prohibited gear.</p>
+    </div>
+
+    <form method="GET" action="{{ url_for('admin_listings') }}" class="d-flex gap-2 flex-wrap" id="listing-filter-form">
+      <div class="input-group input-group-sm" style="width: 230px;">
+        <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control r2s-input border-start-0" placeholder="Search title, category, city..." value="{{ search_query or '' }}">
+        <button type="submit" class="btn btn-sm btn-r2s-primary px-2.5" title="Search listings">Go</button>
+      </div>
+
+      <select name="type" class="form-select form-select-sm r2s-input" style="width: 125px;" onchange="this.form.submit()">
+        <option value="" {% if not type_filter %}selected{% endif %}>All Types</option>
+        <option value="Rent" {% if type_filter == 'Rent' %}selected{% endif %}>Rent</option>
+        <option value="Sell" {% if type_filter == 'Sell' %}selected{% endif %}>Sell</option>
+        <option value="Exchange" {% if type_filter == 'Exchange' %}selected{% endif %}>Exchange</option>
+      </select>
+
+      <select name="status" class="form-select form-select-sm r2s-input" style="width: 150px;" onchange="this.form.submit()">
+        <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+        <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Available</option>
+        <option value="Inactive" {% if status_filter == 'Inactive' %}selected{% endif %}>Inactive / Disabled</option>
+        <option value="Rented" {% if status_filter == 'Rented' %}selected{% endif %}>Rented</option>
+        <option value="Sold" {% if status_filter == 'Sold' %}selected{% endif %}>Sold</option>
+        <option value="Exchanged" {% if status_filter == 'Exchanged' %}selected{% endif %}>Exchanged</option>
+        <option value="Archived" {% if status_filter == 'Archived' %}selected{% endif %}>Archived</option>
+      </select>
+    </form>
+  </div>
+
+  <!-- Listings Table -->
+  {% if listings %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0" style="background: transparent;">
+        <thead>
+          <tr class="text-secondary small" style="border-color: rgba(168, 85, 247, 0.2);">
+            <th>Item</th>
+            <th>Owner</th>
+            <th>Type</th>
+            <th>Pricing / Swap</th>
+            <th>Status</th>
+            <th class="text-end">Moderation</th>
+          </tr>
+        </thead>
+        <tbody style="border-color: rgba(168, 85, 247, 0.15);">
+          {% for it in listings %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2.5">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="rounded-3 border" style="width: 48px; height: 48px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="overflow-hidden" style="max-width: 280px;">
+                    <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="fw-bold text-white text-decoration-none d-block text-truncate" target="_blank" title="{{ it.title }}">
+                      {{ it.title }}
+                    </a>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                      <span class="small text-secondary">{{ it.category }} &bull; {{ it.condition }}</span>
+                      {% if it.is_sample %}
+                        <span class="badge r2x-sample-badge py-0 px-1.5" style="font-size: 0.65rem;">Sample</span>
+                      {% endif %}
+                      {% if it.open_reports_count and it.open_reports_count > 0 %}
+                        <a href="{{ url_for('admin_reports', status='Open') }}" class="badge bg-danger text-white py-0 px-1.5 text-decoration-none" style="font-size: 0.65rem;">
+                          <i class="bi bi-flag-fill me-0.5"></i>{{ it.open_reports_count }} Flagged
+                        </a>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="small text-white fw-semibold">{{ it.seller_name }}</div>
+                <div class="small text-secondary" style="font-size: 0.75rem;">{{ it.seller_college or it.city }}</div>
+              </td>
+              <td>
+                <span class="badge-r2s badge-r2s-rent py-0 px-2">{{ it.transaction_type }}</span>
+              </td>
+              <td>
+                {% if it.transaction_type == 'Rent' %}
+                  <strong class="text-success small">₹{{ "{:,.0f}".format(it.rent_amount or 0) }}/{{ it.rent_period or 'Day' }}</strong>
+                {% elif it.transaction_type == 'Sell' %}
+                  <strong class="text-white small">₹{{ "{:,.0f}".format(it.price or 0) }}</strong>
+                {% else %}
+                  <span class="badge-r2s badge-r2s-swap py-0 px-2" title="{{ it.exchange_preference }}">Swap</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if it.status == 'Available' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">Available</span>
+                {% elif it.status == 'Inactive' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1">Disabled</span>
+                {% else %}
+                  <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1">{{ it.status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-1.5">
+                  <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2" target="_blank" title="View Listing Page">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+
+                  {% if it.status == 'Available' %}
+                    <form action="{{ url_for('admin_toggle_listing', item_id=it.item_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2.5" title="Disable from public catalog" data-confirm-message="Disable listing {{ it.title }}?">
+                        <i class="bi bi-slash-circle me-1"></i> Disable
+                      </button>
+                    </form>
+                  {% elif it.status in ('Inactive', 'Archived', 'Unavailable') %}
+                    <form action="{{ url_for('admin_toggle_listing', item_id=it.item_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-success py-1 px-2.5" title="Restore to public catalog">
+                        <i class="bi bi-check-circle me-1"></i> Enable
+                      </button>
+                    </form>
+                  {% else %}
+                    <span class="btn btn-sm btn-r2s-outline py-1 px-2.5 disabled" title="Locked while {{ it.status }}">
+                      <i class="bi bi-lock-fill me-1"></i> {{ it.status }}
+                    </span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-center py-5 text-secondary">
+      <i class="bi bi-box-seam fs-1 d-block mb-2 text-muted"></i>
+      No marketplace listings found matching this filter.
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

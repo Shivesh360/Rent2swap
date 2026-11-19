@@ -1,0 +1,101 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Safety &amp; Community Reports{% endblock %}
+
+{% block admin_content %}
+<div class="r2s-glass-card p-4">
+
+  <!-- Header & Filters -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h5 class="fw-bold text-white mb-1">Campus Safety &amp; Conduct Reports ({{ reports|length }})</h5>
+      <p class="text-secondary small mb-0">Review student flags regarding suspicious gear, misleading conditions, or misconduct.</p>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('admin_reports', status='All') }}" class="btn btn-sm {% if status_filter == 'All' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        All ({{ counts.all }})
+      </a>
+      <a href="{{ url_for('admin_reports', status='Open') }}" class="btn btn-sm {% if status_filter == 'Open' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Open ({{ counts.open }})
+      </a>
+      <a href="{{ url_for('admin_reports', status='Resolved') }}" class="btn btn-sm {% if status_filter == 'Resolved' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Resolved ({{ counts.resolved }})
+      </a>
+      <a href="{{ url_for('admin_reports', status='Dismissed') }}" class="btn btn-sm {% if status_filter == 'Dismissed' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Dismissed ({{ counts.dismissed }})
+      </a>
+    </div>
+  </div>
+
+  {% if reports %}
+    <div class="d-flex flex-column gap-3">
+      {% for rep in reports %}
+        <div class="r2s-panel-box p-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-2 pb-2 border-bottom" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="badge-r2s badge-r2s-rent py-0 px-2">Report #{{ rep.report_id }}</span>
+              <span class="badge bg-secondary text-white rounded-pill px-2.5 py-0.5">{{ rep.target_type }}</span>
+              <strong class="text-white">Reason: {{ rep.reason }}</strong>
+            </div>
+
+            <div>
+              {% if rep.status == 'Open' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">Open</span>
+              {% elif rep.status == 'Resolved' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Resolved</span>
+              {% else %}
+                <span class="badge bg-secondary text-white rounded-pill px-3 py-1">{{ rep.status }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-8">
+              <div class="small text-secondary mb-2">
+                Reporter: <strong class="text-white">{{ rep.reporter_name }}</strong> ({{ rep.reporter_college or 'Student' }}) &bull;
+                Target:
+                {% if rep.target_url %}
+                  <a href="{{ rep.target_url }}" target="_blank" class="fw-semibold text-decoration-underline">{{ rep.target_label }}</a>
+                {% else %}
+                  <strong class="text-white">{{ rep.target_label }}</strong>
+                {% endif %}
+                &bull; Filed: {{ rep.created_at[:16] if rep.created_at else '' }}
+              </div>
+              <p class="text-white small mb-2 p-2.5 rounded-3" style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(168, 85, 247, 0.2);">
+                "{{ rep.description }}"
+              </p>
+              {% if rep.admin_remark %}
+                <div class="small text-success">
+                  <i class="bi bi-chat-quote-fill me-1"></i>Staff Remark: {{ rep.admin_remark }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-4 text-md-end d-flex flex-column justify-content-center gap-2">
+              <form action="{{ url_for('admin_resolve_report', report_id=rep.report_id) }}" method="POST" class="d-flex flex-column gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="admin_remark" class="form-control form-control-sm r2s-input" placeholder="Staff resolution note..." value="{{ rep.admin_remark or '' }}" required>
+                <div class="d-flex gap-2 justify-content-md-end">
+                  <button type="submit" name="action" value="resolve" class="btn btn-sm btn-r2s-primary py-1 px-3">
+                    <i class="bi bi-check-lg me-1"></i> Resolve
+                  </button>
+                  <button type="submit" name="action" value="dismiss" class="btn btn-sm btn-r2s-outline py-1 px-2.5 text-secondary">
+                    Dismiss
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5 text-secondary">
+      <i class="bi bi-shield-check fs-1 d-block mb-2 text-success"></i>
+      Zero community flags or conduct reports. Everything is running smoothly!
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

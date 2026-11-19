@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% from "partials/_listing_card.html" import render_listing_card %}
+
+{% block title %}Rent2Swap - Student Rental, Selling &amp; Exchange Marketplace{% endblock %}
+
+{% block content %}
+<!-- Floating Threads Canvas (Exclusive to Home & Auth) -->
+<canvas id="r2s-threads-canvas" style="position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: -1;"></canvas>
+
+<div class="container py-3">
+
+  <!-- ==============================================================================
+       Rent2Swap Hero Section (Stitch 2-Column Composition with Reserved 3D Space)
+       ============================================================================== -->
+  <div class="r2s-glass-panel p-4 p-md-5 mb-5 position-relative overflow-hidden" id="hero-banner">
+    <!-- Ambient Inner Glow Accent -->
+    <div class="position-absolute top-0 start-50 translate-middle-x" style="width: 70%; height: 180px; background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 70%); pointer-events: none;"></div>
+
+    <div class="row align-items-center g-4 g-lg-5 position-relative" style="z-index: 2;">
+      <!-- Left Column: Hero Content & Search (col-lg-6) -->
+      <div class="col-12 col-lg-6 text-start">
+        <!-- Top Campus Verified Trust Pill -->
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill mb-3" style="background: rgba(124, 58, 237, 0.18); border: 1px solid rgba(168, 85, 247, 0.4);">
+          <i class="bi bi-shield-check text-success"></i>
+          <span class="small fw-semibold text-white">Campus Verified Peer-to-Peer</span>
+        </div>
+
+        <!-- Main Display Headline -->
+        <h1 class="display-4 fw-bold mb-3 text-white">
+          Rent, Swap &amp; Buy on <span class="r2s-gradient-text">Campus</span>
+        </h1>
+        <p class="lead mb-4 text-secondary" style="max-width: 580px; font-size: 1.15rem; line-height: 1.6;">
+          The trusted student marketplace. Save thousands on textbooks, electronics, cycles, lab gear, and dorm essentials directly from verified peers at your college.
+        </p>
+
+        <!-- Classical Animated Search Box (.r2x-search) -->
+        <div class="mb-4" id="hero-search-container">
+          <form action="{{ url_for('marketplace') }}" method="GET" class="r2x-search" id="hero-search-form" role="search">
+            <div class="r2x-search-inner">
+              <div class="r2x-search-main">
+                <span class="r2x-search-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                  </svg>
+                </span>
+                <div class="r2x-search-field">
+                  <input type="text" name="q" class="r2x-search-input" placeholder="Search gear (e.g. Drafter, Sony A7, Cycle)..." aria-label="Search items" id="hero-search-input" autocomplete="off">
+                  <button type="button" class="r2x-search-clear" aria-label="Clear search">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+                <button type="submit" class="r2x-search-btn" id="hero-search-btn">
+                  <span>Find</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14"></path>
+                    <path d="M13 6l6 6-6 6"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="r2x-search-filters">
+                <div class="r2x-search-filter">
+                  <span class="r2x-search-filter-lbl">Category</span>
+                  <select name="category" class="r2x-search-select" aria-label="Select Category" id="hero-category-select">
+                    <option value="All" selected>All Categories</option>
+                    {% for cat in categories %}
+                      <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <span class="r2x-search-div" aria-hidden="true"></span>
+                <div class="r2x-search-filter">
+                  <span class="r2x-search-filter-lbl">Deal</span>
+                  <select name="type" class="r2x-search-select" aria-label="Select Transaction Type" id="hero-type-select">
+                    <option value="All" selected>All Deals</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Exchange">Swap</option>
+                    <option value="Sell">Buy / Sell</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Quick Action Badges -->
+        <div class="d-flex align-items-center gap-2 flex-wrap small">
+          <span class="text-secondary">Popular:</span>
+          <a href="{{ url_for('marketplace', category='Cameras') }}" class="badge-r2s badge-r2s-rent text-decoration-none">Cameras</a>
+          <a href="{{ url_for('marketplace', category='Laptops') }}" class="badge-r2s badge-r2s-rent text-decoration-none">Laptops</a>
+          <a href="{{ url_for('marketplace', category='Cycles') }}" class="badge-r2s badge-r2s-swap text-decoration-none">Cycles</a>
+          <a href="{{ url_for('marketplace', category='Books') }}" class="badge-r2s badge-r2s-swap text-decoration-none">Textbooks</a>
+          <a href="{{ url_for('marketplace', type='Rent') }}" class="badge-r2s badge-r2s-rent text-decoration-none fw-bold">For Rent</a>
+          <a href="{{ url_for('marketplace', type='Exchange') }}" class="badge-r2s badge-r2s-swap text-decoration-none fw-bold">For Swap</a>
+        </div>
+      </div>
+
+      <!-- Right Column: 3D CARD CAROUSEL SHOWCASE (col-lg-6) -->
+      <div class="col-12 col-lg-6 d-flex justify-content-center align-items-center py-2 py-lg-4 px-lg-4">
+        <div class="r2s r2-hero" id="r2s">
+          <div class="r2s-stage" id="r2sStage"></div>
+          <div class="r2s-dots" id="r2sDots"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       Campus Trust & Value Animated Stepper (.r2f)
+       ============================================================================== -->
+  <section class="r2f mb-4" id="r2f">
+    <div class="r2f-wrap">
+      <div class="r2f-track"><i class="r2f-fill" id="r2fFill"></i><b class="r2f-orb" id="r2fOrb"></b></div>
+      <div class="r2f-grid" id="r2fGrid"></div>
+    </div>
+  </section>
+
+  <!-- ==============================================================================
+       Category Browse Strip
+       ============================================================================== -->
+  <div class="mb-5" id="categories-strip">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="fw-bold text-white mb-1">Browse Categories</h4>
+        <p class="text-secondary small mb-0">Find the exact tools, books, and gear you need</p>
+      </div>
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline">View All Gear</a>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline active">
+        <i class="bi bi-grid-fill me-1"></i> All Items
+      </a>
+      {% for cat in categories[:10] %}
+        <a href="{{ url_for('marketplace', category=cat) }}" class="btn btn-sm btn-r2s-outline">
+          <span>{{ cat }}</span>
+          {% if category_counts.get(cat) %}
+            <span class="badge rounded-pill ms-1" style="background: rgba(168, 85, 247, 0.3); color: #e9d5ff;">{{ category_counts.get(cat) }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+      {% if categories|length > 10 %}
+        <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline" style="color: var(--r2s-accent-violet) !important;">
+          +{{ categories|length - 10 }} More
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       Featured & Recent Active Listings Grid
+       ============================================================================== -->
+  <div class="mb-5" id="featured-listings-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="fw-bold text-white mb-1">Featured Campus Listings</h4>
+        <p class="text-secondary small mb-0">Verified student gear available for rent, swap, or sale</p>
+      </div>
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline d-flex align-items-center gap-1">
+        <span>Explore Catalog ({{ stats.total_listings }})</span>
+        <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+
+    {% if featured_items %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 g-lg-4">
+        {% for item in featured_items %}
+          <div class="col">
+            {{ render_listing_card(item, card_prefix='listing-card', btn_prefix='view-btn', compact=false, index=loop.index0) }}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="r2s-glass-card p-5 text-center">
+        <i class="bi bi-inbox text-secondary display-4 mb-3 d-block"></i>
+        <h5 class="fw-bold text-white">No active listings yet</h5>
+        <p class="text-secondary small">Be the first to list a textbook, cycle, or electronic gadget for rent, sale, or swap!</p>
+        <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary mt-2">Post First Listing</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ==============================================================================
+       How Rent2Swap Works Section
+       ============================================================================== -->
+  <div class="r2s-glass-panel p-4 p-md-5 mb-5" id="how-it-works-section">
+    <div class="text-center mb-5">
+      <span class="badge-r2s badge-r2s-verified mb-2">Student Peer-to-Peer</span>
+      <h3 class="fw-bold text-white">How Rent2Swap Works</h3>
+      <p class="text-secondary small mx-auto mb-0" style="max-width: 580px;">
+        Exchange items and save cash with three simple steps inside your campus network.
+      </p>
+    </div>
+
+    <div class="row g-4 text-center">
+      <div class="col-md-4">
+        <div class="p-3">
+          <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 60px; height: 60px; border-radius: 16px; font-size: 1.5rem;">
+            <i class="bi bi-upload"></i>
+          </div>
+          <h5 class="fw-bold text-white mb-2">1. List Your Gear</h5>
+          <p class="text-secondary small mb-0">
+            Upload textbooks, lab coats, cycles, or consoles. Choose whether to rent, swap, or sell.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3">
+          <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 60px; height: 60px; border-radius: 16px; font-size: 1.5rem; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);">
+            <i class="bi bi-chat-square-dots-fill"></i>
+          </div>
+          <h5 class="fw-bold text-white mb-2">2. Connect with Peers</h5>
+          <p class="text-secondary small mb-0">
+            Chat with verified students from your college. Propose swap trades or agree on daily rental terms.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3">
+          <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 60px; height: 60px; border-radius: 16px; font-size: 1.5rem; background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);">
+            <i class="bi bi-check-circle-fill"></i>
+          </div>
+          <h5 class="fw-bold text-white mb-2">3. Safe Handover</h5>
+          <p class="text-secondary small mb-0">
+            Meet up at common campus spots (library, student center, canteen) for safe inspection and exchange.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       Bottom Call To Action Banner
+       ============================================================================== -->
+  <div class="r2s-glass-card p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-center gap-4 mb-4 position-relative overflow-hidden" id="cta-banner">
+    <div class="position-absolute top-0 end-0 w-50 h-100" style="background: radial-gradient(circle at 100% 50%, rgba(124, 58, 237, 0.25) 0%, transparent 70%); pointer-events: none;"></div>
+
+    <div class="position-relative" style="z-index: 2;">
+      <h4 class="fw-bold text-white mb-1">Have semester gear sitting unused in your room?</h4>
+      <p class="mb-0 text-secondary">Turn dormant books, cycles, and gadgets into extra cash or swap for what you need today.</p>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0 position-relative" style="z-index: 2;">
+      <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary px-4 py-2" id="cta-post-btn">
+        <i class="bi bi-plus-circle-fill me-1"></i> List Gear Now
+      </a>
+      <a href="{{ url_for('marketplace') }}" class="btn btn-r2s-outline px-4 py-2" id="cta-browse-btn">
+        Browse Campus Deals
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Floating Threads Canvas (Exclusive to Home & Auth) -->
+<script src="{{ url_for('static', filename='js/floating-threads.js') }}"></script>
+
+<!-- Premium 3D Card Carousel Showcase (.r2s) -->
+<script>
+(function() {
+  var stage = document.getElementById('r2sStage');
+  var dotsContainer = document.getElementById('r2sDots');
+  var r2sContainer = document.getElementById('r2s');
+  if (!stage || !dotsContainer) return;
+
+  var icons = {
+    camera: '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>',
+    laptop: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="20" x2="22" y2="20"></line></svg>',
+    calculator: '<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14.01"></line><line x1="12" y1="14" x2="12" y2="14.01"></line><line x1="8" y1="14" x2="8" y2="14.01"></line><line x1="16" y1="18" x2="16" y2="18.01"></line><line x1="12" y1="18" x2="12" y2="18.01"></line><line x1="8" y1="18" x2="8" y2="18.01"></line></svg>',
+    drone: '<svg viewBox="0 0 24 24"><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path><path d="M4 8l5 2.5"></path><path d="M20 8l-5 2.5"></path><path d="M4 16l5 -2.5"></path><path d="M20 16l-5 -2.5"></path><circle cx="4" cy="8" r="2.5"></circle><circle cx="20" cy="8" r="2.5"></circle><circle cx="4" cy="16" r="2.5"></circle><circle cx="20" cy="16" r="2.5"></circle></svg>',
+    tablet: '<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>'
+  };
+
+  var items = [
+    {
+      title: "Sony Alpha A7 III 4K",
+      pill: "For Rent",
+      rating: "4.9",
+      price: "₹250/day",
+      meta: "Electronics · Campus Hub",
+      match: 98,
+      c1: "#7c3aed",
+      c2: "#4338ca",
+      g: "124, 58, 237",
+      icon: "camera",
+      link: "{{ url_for('marketplace', category='Cameras') }}"
+    },
+    {
+      title: "MacBook Pro M3 Max",
+      pill: "For Swap",
+      rating: "5.0",
+      price: "Barter Deal",
+      meta: "Laptops · Hostel Block 3",
+      match: 95,
+      c1: "#2563eb",
+      c2: "#1e40af",
+      g: "37, 99, 235",
+      icon: "laptop",
+      link: "{{ url_for('marketplace', category='Laptops') }}"
+    },
+    {
+      title: "TI-84 Plus CE Graphing",
+      pill: "For Rent",
+      rating: "4.8",
+      price: "₹40/week",
+      meta: "Calculators · Exam Prep",
+      match: 94,
+      c1: "#059669",
+      c2: "#047857",
+      g: "16, 185, 129",
+      icon: "calculator",
+      link: "{{ url_for('marketplace', category='Electronics') }}"
+    },
+    {
+      title: "DJI Mini 4 Pro Drone",
+      pill: "For Rent",
+      rating: "4.9",
+      price: "₹350/day",
+      meta: "Robotics & Film · Lab B",
+      match: 92,
+      c1: "#db2777",
+      c2: "#9d174d",
+      g: "219, 39, 119",
+      icon: "drone",
+      link: "{{ url_for('marketplace', category='Electronics') }}"
+    },
+    {
+      title: "iPad Pro 12.9 + Pencil",
+      pill: "For Swap",
+      rating: "4.9",
+      price: "Swap Ready",
+      meta: "Creative Arts · Studio 2",
+      match: 96,
+      c1: "#ea580c",
+      c2: "#c2410c",
+      g: "234, 88, 12",
+      icon: "tablet",
+      link: "{{ url_for('marketplace', category='Tablets') }}"
+    }
+  ];
+
+  var current = 0;
+  var count = items.length;
+  var cards = [];
+  var dots = [];
+  var timer = null;
+
+  // Add ambient glow behind cards
+  var glow = document.createElement('div');
+  glow.className = 'r2s-glow on';
+  stage.appendChild(glow);
+
+  // Render cards and dots
+  items.forEach(function(item, idx) {
+    var card = document.createElement('div');
+    card.className = 'r2s-card';
+    card.style.setProperty('--c1', item.c1);
+    card.style.setProperty('--c2', item.c2);
+    card.style.setProperty('--g', item.g);
+
+    card.innerHTML =
+      '<div class="r2s-card-top">' +
+        '<span class="r2s-card-pill">' + item.pill + '</span>' +
+        '<span class="r2s-card-rating">★ ' + item.rating + '</span>' +
+      '</div>' +
+      '<div class="r2s-card-body">' +
+        '<div class="r2s-orb">' + (icons[item.icon] || '') + '</div>' +
+      '</div>' +
+      '<div class="r2s-card-bottom">' +
+        '<div class="r2s-card-title">' + item.title + '</div>' +
+        '<div class="r2s-card-meta">' + item.meta + '</div>' +
+        '<div class="r2s-card-action">' +
+          '<span class="r2s-card-price">' + item.price + '</span>' +
+          '<a href="' + item.link + '" class="r2s-card-btn">Explore →</a>' +
+        '</div>' +
+      '</div>';
+
+    card.addEventListener('click', function(e) {
+      if (idx !== current) {
+        e.preventDefault();
+        goTo(idx);
+      }
+    });
+
+    stage.appendChild(card);
+    cards.push(card);
+
+    var dot = document.createElement('button');
+    dot.className = 'r2s-dot' + (idx === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Slide ' + (idx + 1));
+    dot.addEventListener('click', function() {
+      goTo(idx);
+    });
+    dotsContainer.appendChild(dot);
+    dots.push(dot);
+  });
+
+  function update() {
+    cards.forEach(function(card, i) {
+      var diff = (i - current + count) % count;
+      if (diff > count / 2) diff -= count;
+
+      card.classList.remove('active');
+
+      if (diff === 0) {
+        card.style.transform = 'translate3d(0, 0, 0) scale(1) rotateY(0deg)';
+        card.style.zIndex = '10';
+        card.style.opacity = '1';
+        card.style.filter = 'none';
+        card.classList.add('active');
+      } else if (diff === 1) {
+        card.style.transform = 'translate3d(56%, 0, -110px) scale(0.88) rotateY(-18deg)';
+        card.style.zIndex = '8';
+        card.style.opacity = '0.86';
+        card.style.filter = 'brightness(0.9)';
+      } else if (diff === -1) {
+        card.style.transform = 'translate3d(-56%, 0, -110px) scale(0.88) rotateY(18deg)';
+        card.style.zIndex = '8';
+        card.style.opacity = '0.86';
+        card.style.filter = 'brightness(0.9)';
+      } else if (diff === 2) {
+        card.style.transform = 'translate3d(92%, 0, -220px) scale(0.74) rotateY(-28deg)';
+        card.style.zIndex = '5';
+        card.style.opacity = '0.4';
+        card.style.filter = 'brightness(0.75)';
+      } else if (diff === -2) {
+        card.style.transform = 'translate3d(-92%, 0, -220px) scale(0.74) rotateY(28deg)';
+        card.style.zIndex = '5';
+        card.style.opacity = '0.4';
+        card.style.filter = 'brightness(0.75)';
+      } else {
+        card.style.transform = 'translate3d(0, 0, -320px) scale(0.6)';
+        card.style.zIndex = '1';
+        card.style.opacity = '0';
+      }
+    });
+
+    dots.forEach(function(dot, i) {
+      if (i === current) {
+        dot.classList.add('active');
+      } else {
+        dot.classList.remove('active');
+      }
+    });
+
+    // Update dynamic ambient background glow
+    var activeItem = items[current];
+    glow.style.background = 'radial-gradient(circle at 50% 50%, rgba(' + activeItem.g + ', 0.38), transparent 72%)';
+  }
+
+  function goTo(idx) {
+    current = (idx + count) % count;
+    update();
+    resetAutoplay();
+  }
+
+  function next() {
+    goTo(current + 1);
+  }
+
+  function prev() {
+    goTo(current - 1);
+  }
+
+  function startAutoplay() {
+    stopAutoplay();
+    timer = setInterval(next, 3800);
+  }
+
+  function stopAutoplay() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function resetAutoplay() {
+    stopAutoplay();
+    startAutoplay();
+  }
+
+  // Swipe & Touch / Drag support
+  var startX = 0;
+  var isSwiping = false;
+
+  stage.addEventListener('touchstart', function(e) {
+    startX = e.touches[0].clientX;
+    isSwiping = true;
+    stopAutoplay();
+  }, { passive: true });
+
+  stage.addEventListener('touchend', function(e) {
+    if (!isSwiping) return;
+    var deltaX = e.changedTouches[0].clientX - startX;
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX > 0) prev();
+      else next();
+    }
+    isSwiping = false;
+    startAutoplay();
+  }, { passive: true });
+
+  if (r2sContainer) {
+    r2sContainer.addEventListener('mouseenter', stopAutoplay);
+    r2sContainer.addEventListener('mouseleave', startAutoplay);
+  }
+
+  // Initial layout render & autoplay start
+  update();
+  startAutoplay();
+})();
+</script>
+
+<!-- Campus Trust & Value Animated Stepper (.r2f) -->
+<script>
+(function(){
+  var data=[
+    {t:'Campus Verified',d:'Direct Student ID & Enrollment verification',cap:'Verify your campus ID',c1:'#2DD4BF',c2:'#0E9488',g:'45,212,191',
+     i:'<path d="M12 3l7 3v5c0 5-3.2 8.2-7 10-3.8-1.8-7-5-7-10V6z"/><path d="M8.8 12l2.3 2.3 4.2-4.6"/>'},
+    {t:'Direct Swaps',d:'Barter semester gear without cash friction',cap:'Pick an item to swap',c1:'#A78BFA',c2:'#6D4AE0',g:'150,120,255',
+     i:'<path d="M4 8h14l-3-3M20 16H6l3 3"/>'},
+    {t:'Flexible Rentals',d:'Per-day, week or semester rental rates',cap:'Choose rental duration',c1:'#FBBF24',c2:'#F08A12',g:'251,170,40',
+     i:'<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4M8.5 14.5h3"/>'},
+    {t:'Safe Handover',d:'Convenient pickup on your university campus',cap:'Meet & hand over safely ✓',c1:'#38BDF8',c2:'#0A74C9',g:'56,189,248',
+     i:'<path d="M12 21s7-5.6 7-11a7 7 0 0 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>'}
+  ];
+  var root=document.getElementById('r2f'),grid=document.getElementById('r2fGrid'),
+      fill=document.getElementById('r2fFill'),orb=document.getElementById('r2fOrb');
+  if(!root||!grid)return;
+  var n=data.length,cur=0,timer=null,items=[],started=false;
+
+  data.forEach(function(x,k){
+    var it=document.createElement('div');it.className='r2f-item';
+    it.style.cssText='--c1:'+x.c1+';--c2:'+x.c2+';--g:'+x.g+';transition-delay:'+(k*0.12)+'s';
+    it.innerHTML='<div class="r2f-node"><svg viewBox="0 0 24 24">'+x.i+'</svg></div>'+
+      '<div class="r2f-card"><span class="r2f-num">0'+(k+1)+'</span><h4>'+x.t+'</h4><p>'+x.d+'</p>'+
+      '<div class="r2f-bar"><i></i></div></div>';
+    it.addEventListener('click',function(){go(k);restart();});
+    grid.appendChild(it);items.push(it);
+  });
+
+  function go(k){
+    cur=(k+n)%n;
+    items.forEach(function(el,i){
+      var bar=el.querySelector('.r2f-bar i');
+      el.className='r2f-item'+(i===cur?' on':'');
+      bar.style.animation='none';void bar.offsetWidth;bar.style.animation='';
+    });
+    var x=data[cur];
+    fill.style.width=(cur/(n-1)*100)+'%';
+    orb.style.left=(cur/(n-1)*100)+'%';
+    orb.style.setProperty('--c',x.c1);orb.style.setProperty('--g',x.g);
+  }
+  function restart(){
+    clearInterval(timer);
+    if(!started)return;
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    timer=setInterval(function(){if(!document.hidden)go(cur+1);},3600);
+  }
+  function start(){
+    if(started)return;started=true;root.className+=' in';go(0);restart();
+  }
+  root.addEventListener('mouseenter',function(){clearInterval(timer);});
+  root.addEventListener('mouseleave',function(){go(cur);restart();});
+
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(e,o){if(e[0].isIntersecting){start();o.disconnect();}},{threshold:.25}).observe(root);
+  }else{start();}
+})();
+</script>
+<script src="{{ url_for('static', filename='js/search-bar.js') }}"></script>
+{% endblock %}

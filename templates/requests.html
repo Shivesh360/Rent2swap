@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+
+{% block title %}Requests &amp; Rentals - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="requests-page">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold text-white mb-1">Requests &amp; <span class="r2s-gradient-text">Transactions</span></h2>
+      <p class="text-secondary small mb-0">
+        Track your campus rentals, purchases, swap offers, and active handovers in real time.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline">
+        <i class="bi bi-grid me-1"></i> Browse Gear
+      </a>
+      <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary">
+        <i class="bi bi-plus-circle me-1"></i> Post Gear
+      </a>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="d-flex gap-2 mb-4 overflow-auto pb-2" id="requests-tab-bar">
+    <a href="{{ url_for('my_requests', tab='all') }}" class="btn btn-sm {% if active_tab == 'all' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      All Requests <span class="badge rounded-pill ms-1 r2s-tab-badge">{{ counts.all }}</span>
+    </a>
+    <a href="{{ url_for('my_requests', tab='sent') }}" class="btn btn-sm {% if active_tab == 'sent' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      Sent Requests <span class="badge rounded-pill ms-1 r2s-tab-badge">{{ counts.sent }}</span>
+    </a>
+    <a href="{{ url_for('my_requests', tab='received') }}" class="btn btn-sm {% if active_tab == 'received' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      Received Offers <span class="badge rounded-pill ms-1 r2s-tab-badge">{{ counts.received }}</span>
+    </a>
+    <a href="{{ url_for('my_requests', tab='active') }}" class="btn btn-sm {% if active_tab == 'active' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      Active Deals <span class="badge rounded-pill ms-1 r2s-tab-badge">{{ counts.active }}</span>
+    </a>
+    <a href="{{ url_for('my_requests', tab='completed') }}" class="btn btn-sm {% if active_tab == 'completed' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3 text-nowrap">
+      Completed <span class="badge rounded-pill ms-1 r2s-tab-badge">{{ counts.completed }}</span>
+    </a>
+  </div>
+
+  <!-- Selected Requests List -->
+  {% set current_list = all_requests %}
+  {% if active_tab == 'sent' %}
+    {% set current_list = sent_requests %}
+  {% elif active_tab == 'received' %}
+    {% set current_list = received_requests %}
+  {% elif active_tab == 'active' %}
+    {% set current_list = active_rentals %}
+  {% elif active_tab == 'completed' %}
+    {% set current_list = completed_rentals %}
+  {% endif %}
+
+  {% if current_list %}
+    <div class="d-flex flex-column gap-3" id="requests-list">
+      {% for req in current_list %}
+        <div class="r2s-glass-card p-3 p-md-4">
+          <div class="row align-items-center g-3">
+            <!-- Left: Thumbnail & Info -->
+            <div class="col-md-7 d-flex gap-3 align-items-center">
+              <img src="{{ req.primary_image | image_url(req.item_category) }}" alt="{{ req.item_title }}" class="rounded-3 border flex-shrink-0" style="width: 80px; height: 80px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+              <div class="overflow-hidden flex-grow-1">
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                  <!-- Deal Badge -->
+                  {% if req.request_type == 'Exchange' %}
+                    <span class="badge-r2s badge-r2s-swap py-0 px-2">
+                      <i class="bi bi-arrow-left-right me-1"></i>Swap
+                    </span>
+                  {% elif req.request_type == 'Sell' %}
+                    <span class="badge-r2s badge-r2s-sell py-0 px-2">
+                      <i class="bi bi-tag-fill me-1"></i>Sale
+                    </span>
+                  {% else %}
+                    <span class="badge-r2s badge-r2s-rent py-0 px-2">
+                      <i class="bi bi-clock-history me-1"></i>Rent
+                    </span>
+                  {% endif %}
+
+                  <!-- Status Badge (Strictly per Transaction Type) -->
+                  {% if req.request_type == 'Sell' %}
+                    {% if req.display_status == 'PENDING' %}
+                      <span class="badge-r2s badge-r2s-swap">
+                        <i class="bi bi-hourglass-split me-1"></i>Awaiting Seller Approval
+                      </span>
+                    {% elif req.display_status in ('ACCEPTED', 'ACTIVE') %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-bag-check-fill me-1"></i>Sale Accepted &mdash; Pending Handover
+                      </span>
+                    {% elif req.display_status == 'COMPLETED' %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-check-all me-1"></i>Sold / Completed
+                      </span>
+                    {% elif req.display_status == 'REJECTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-x-circle me-1"></i>Declined
+                      </span>
+                    {% elif req.display_status == 'CANCELLED' %}
+                      <span class="badge-r2s bg-secondary text-white">
+                        <i class="bi bi-slash-circle me-1"></i>Cancelled
+                      </span>
+                    {% elif req.display_status == 'DISPUTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-shield-exclamation me-1"></i>Dispute / Condition Reported
+                      </span>
+                    {% else %}
+                      <span class="badge-r2s bg-secondary text-white">{{ req.status }}</span>
+                    {% endif %}
+                  {% elif req.request_type == 'Exchange' %}
+                    {% if req.display_status == 'PENDING' %}
+                      <span class="badge-r2s badge-r2s-swap">
+                        <i class="bi bi-hourglass-split me-1"></i>Awaiting Owner Approval
+                      </span>
+                    {% elif req.display_status in ('ACCEPTED', 'ACTIVE') %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-arrow-left-right me-1"></i>Swap Accepted &mdash; Pending Handover
+                      </span>
+                    {% elif req.display_status == 'COMPLETED' %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-check-all me-1"></i>Exchanged
+                      </span>
+                    {% elif req.display_status == 'REJECTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-x-circle me-1"></i>Declined
+                      </span>
+                    {% elif req.display_status == 'CANCELLED' %}
+                      <span class="badge-r2s bg-secondary text-white">
+                        <i class="bi bi-slash-circle me-1"></i>Cancelled
+                      </span>
+                    {% elif req.display_status == 'DISPUTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-shield-exclamation me-1"></i>Dispute / Condition Reported
+                      </span>
+                    {% else %}
+                      <span class="badge-r2s bg-secondary text-white">{{ req.status }}</span>
+                    {% endif %}
+                  {% else %}
+                    {% if req.display_status == 'RETURN_REQUESTED' %}
+                      <span class="badge-r2s badge-r2s-swap">
+                        <i class="bi bi-arrow-repeat me-1"></i>Return Requested (Pending Confirmation)
+                      </span>
+                    {% elif req.display_status == 'OVERDUE' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.25); border: 1px solid rgba(244, 63, 94, 0.5); color: #fda4af;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>OVERDUE
+                      </span>
+                    {% elif req.display_status == 'DUE SOON' %}
+                      <span class="badge-r2s badge-r2s-swap">
+                        <i class="bi bi-clock-history me-1"></i>Due Soon ({{ req.days_remaining }} day{{ 's' if req.days_remaining != 1 else '' }})
+                      </span>
+                    {% elif req.display_status in ('ACTIVE', 'ACCEPTED') %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-play-circle-fill me-1"></i>Active{% if req.days_remaining is not none %} ({{ req.days_remaining }} days left){% endif %}
+                      </span>
+                    {% elif req.display_status == 'PENDING' %}
+                      <span class="badge-r2s badge-r2s-swap">
+                        <i class="bi bi-hourglass-split me-1"></i>Awaiting Approval
+                      </span>
+                    {% elif req.display_status in ('COMPLETED', 'RETURNED') %}
+                      <span class="badge-r2s badge-r2s-verified">
+                        <i class="bi bi-check-all me-1"></i>Completed
+                      </span>
+                    {% elif req.display_status == 'REJECTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-x-circle me-1"></i>Declined
+                      </span>
+                    {% elif req.display_status == 'CANCELLED' %}
+                      <span class="badge-r2s bg-secondary text-white">
+                        <i class="bi bi-slash-circle me-1"></i>Cancelled
+                      </span>
+                    {% elif req.display_status == 'DISPUTED' %}
+                      <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af;">
+                        <i class="bi bi-shield-exclamation me-1"></i>Dispute / Damage Reported
+                      </span>
+                    {% else %}
+                      <span class="badge-r2s bg-secondary text-white">{{ req.status }}</span>
+                    {% endif %}
+                  {% endif %}
+                </div>
+
+                <h5 class="fw-bold text-white mb-1 text-truncate">
+                  <a href="{{ url_for('item_details', item_id=req.item_id) }}" class="text-white text-decoration-none">
+                    {{ req.item_title }}
+                  </a>
+                </h5>
+
+                <div class="small text-secondary">
+                  {% if req.renter_id == session['user_id'] %}
+                    {% if req.request_type == 'Exchange' %}Trading with{% elif req.request_type == 'Sell' %}Seller{% else %}Lender{% endif %}: <strong class="text-white">{{ req.owner_name }}</strong> ({{ req.owner_college or 'Campus Member' }})
+                  {% else %}
+                    {% if req.request_type == 'Exchange' %}Proposer{% elif req.request_type == 'Sell' %}Buyer{% else %}Borrower{% endif %}: <strong class="text-white">{{ req.renter_name }}</strong> ({{ req.renter_college or 'Campus Member' }})
+                  {% endif %}
+                </div>
+
+                <!-- If Exchange: Show Offered Item Details -->
+                {% if req.request_type == 'Exchange' and req.offered_item_id %}
+                  <div class="p-2 rounded-2 mt-2" style="background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.35);">
+                    <div class="d-flex align-items-center gap-2">
+                      <img src="{{ req.offered_primary_image | image_url(req.offered_item_category) }}" alt="{{ req.offered_item_title }}" class="rounded border flex-shrink-0" style="width: 38px; height: 38px; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                      <div class="overflow-hidden">
+                        <span class="small text-warning fw-semibold d-block" style="font-size: 0.7rem;"><i class="bi bi-arrow-left-right me-1"></i>Offered in Exchange:</span>
+                        <a href="{{ url_for('item_details', item_id=req.offered_item_id) }}" class="text-white small fw-bold text-decoration-none text-truncate d-block">
+                          {{ req.offered_item_title }}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Rental Agreement Check Indicator & Timeline Link -->
+                <div class="d-flex align-items-center gap-3 mt-1 flex-wrap">
+                  {% if req.agreement_accepted %}
+                    <span class="small text-muted">
+                      <i class="bi bi-shield-check text-success me-1"></i>Agreement Signed
+                    </span>
+                  {% endif %}
+                  <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-info small" onclick="openRentalTimeline({{ req.request_id }})">
+                    <i class="bi bi-clock-history me-1"></i>View Status Tracker Timeline
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Middle: Type-Specific Summary (Sale Price / Exchange / Rental Dates) -->
+            <div class="col-md-2 text-md-center">
+              {% if req.request_type == 'Exchange' %}
+                <div class="small text-muted">Exchange Trade</div>
+                <div class="small text-warning fw-bold mt-1"><i class="bi bi-arrow-left-right me-1"></i>Direct Swap</div>
+                <div class="small text-secondary mt-0.5" style="font-size: 0.72rem;">
+                  {% if req.status == 'COMPLETED' and req.completed_at %}
+                    Completed: {{ (req.completed_at|string)[:10] }}
+                  {% else %}
+                    Requested: {{ (req.created_at|string)[:10] if req.created_at else 'Peer-to-Peer' }}
+                  {% endif %}
+                </div>
+              {% elif req.request_type == 'Sell' %}
+                <div class="small text-muted">Sale Transaction</div>
+                <div class="fw-bold text-success mt-1">₹{{ "{:,.0f}".format(req.total_price or req.item_price or 0) }}</div>
+                <div class="small text-secondary mt-0.5" style="font-size: 0.72rem;">
+                  {% if req.status == 'COMPLETED' and req.completed_at %}
+                    Completed: {{ (req.completed_at|string)[:10] }}
+                  {% elif req.status in ('ACCEPTED', 'ACTIVE') and req.accepted_at %}
+                    Accepted: {{ (req.accepted_at|string)[:10] }}
+                  {% else %}
+                    Requested: {{ (req.created_at|string)[:10] if req.created_at else 'N/A' }}
+                  {% endif %}
+                </div>
+              {% else %}
+                <div class="small text-muted">Rental Timeline</div>
+                <div class="small text-white fw-semibold">{{ req.start_date or 'N/A' }} &rarr; {{ req.due_date or 'N/A' }}</div>
+                <div class="fw-bold text-success mt-1">₹{{ "{:,.0f}".format(req.total_price or 0) }}</div>
+                {% if req.returned_date %}
+                  <div class="small text-success mt-0.5" style="font-size: 0.72rem;">Returned: {{ req.returned_date }}</div>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <!-- Right: Action Buttons (Strictly Separated by Transaction Type) -->
+            <div class="col-md-3 text-md-end">
+              <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                <!-- If Owner & PENDING -->
+                {% if req.owner_id == session['user_id'] and req.status == 'PENDING' %}
+                  <form action="{{ url_for('accept_request', request_id=req.request_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3">
+                      <i class="bi bi-check-lg me-1"></i>
+                      {% if req.request_type == 'Exchange' %}Accept Swap{% elif req.request_type == 'Sell' %}Accept Sale{% else %}Accept Rental{% endif %}
+                    </button>
+                  </form>
+                  <form action="{{ url_for('reject_request', request_id=req.request_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger">
+                      Decline
+                    </button>
+                  </form>
+
+                <!-- If Requester & PENDING -->
+                {% elif req.renter_id == session['user_id'] and req.status == 'PENDING' %}
+                  <form action="{{ url_for('cancel_request', request_id=req.request_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-outline py-1 px-3 text-secondary">
+                      Cancel Request
+                    </button>
+                  </form>
+
+                <!-- SALE WORKFLOW (Sell): Handover Confirmation, never Rental Return -->
+                {% elif req.request_type == 'Sell' and req.status in ('ACCEPTED', 'ACTIVE') %}
+                  <form action="{{ url_for('confirm_sale', request_id=req.request_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3" title="Confirm item sold &amp; handed over on campus">
+                      <i class="bi bi-bag-check me-1"></i> Confirm Sale Handover
+                    </button>
+                  </form>
+                  <a href="{{ url_for('damage_report', request_id=req.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Condition or Handover Issue">
+                    <i class="bi bi-flag"></i> Issue
+                  </a>
+
+                <!-- SWAP WORKFLOW (Exchange): Swap Handover Confirmation -->
+                {% elif req.request_type == 'Exchange' and req.status in ('ACCEPTED', 'ACTIVE') %}
+                  <form action="{{ url_for('confirm_exchange', request_id=req.request_id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3">
+                      <i class="bi bi-arrow-left-right me-1"></i> Confirm Swap Handover
+                    </button>
+                  </form>
+                  <a href="{{ url_for('damage_report', request_id=req.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Condition or Handover Issue">
+                    <i class="bi bi-flag"></i> Issue
+                  </a>
+
+                <!-- RENT WORKFLOW: Two-Step Return Handshake -->
+                {% elif req.request_type == 'Rent' and req.status == 'RETURN_REQUESTED' %}
+                  {% if req.owner_id == session['user_id'] %}
+                    <form action="{{ url_for('confirm_return_item', request_id=req.request_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3" title="Inspect gear and confirm safe receipt">
+                        <i class="bi bi-check2-circle me-1"></i> Confirm Return
+                      </button>
+                    </form>
+                  {% else %}
+                    <span class="badge-r2s badge-r2s-swap py-1 px-2.5 small d-inline-block">
+                      <i class="bi bi-hourglass-split me-1"></i>Return Pending Owner Confirmation
+                    </span>
+                  {% endif %}
+
+                  <a href="{{ url_for('damage_report', request_id=req.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Damage or Condition Issue">
+                    <i class="bi bi-flag"></i> Issue
+                  </a>
+
+                {% elif req.request_type == 'Rent' and req.status in ('ACCEPTED', 'ACTIVE', 'OVERDUE') %}
+                  {% if req.renter_id == session['user_id'] %}
+                    <form action="{{ url_for('return_rental_item', request_id=req.request_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3">
+                        <i class="bi bi-arrow-return-left me-1"></i> Request Return
+                      </button>
+                    </form>
+                  {% else %}
+                    <form action="{{ url_for('confirm_return_item', request_id=req.request_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-3" title="Confirm item return received">
+                        <i class="bi bi-check2-circle me-1"></i> Confirm Return
+                      </button>
+                    </form>
+                  {% endif %}
+
+                  <a href="{{ url_for('damage_report', request_id=req.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Damage or Condition Issue">
+                    <i class="bi bi-flag"></i> Issue
+                  </a>
+
+                  {% if req.display_status == 'OVERDUE' and req.owner_id == session['user_id'] %}
+                    <form action="{{ url_for('report_not_returned', request_id=req.request_id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Report item not returned past due date">
+                        Not Returned
+                      </button>
+                    </form>
+                  {% endif %}
+
+                <!-- If COMPLETED -->
+                {% elif req.status in ('COMPLETED', 'RETURNED') %}
+                  {% if req.request_type == 'Exchange' %}
+                    <span class="badge-r2s badge-r2s-verified py-1 px-2.5 small d-inline-block">
+                      <i class="bi bi-check2-all me-1"></i>Exchanged
+                    </span>
+                  {% elif req.request_type == 'Sell' %}
+                    <span class="badge-r2s badge-r2s-verified py-1 px-2.5 small d-inline-block">
+                      <i class="bi bi-check2-all me-1"></i>Sold / Completed
+                    </span>
+                  {% else %}
+                    <span class="badge-r2s badge-r2s-verified py-1 px-2.5 small d-inline-block">
+                      <i class="bi bi-check2-all me-1"></i>Completed
+                    </span>
+                  {% endif %}
+                  <a href="{{ url_for('write_review', rental_id=req.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-3 text-warning">
+                    <i class="bi bi-star me-1"></i> Review Peer
+                  </a>
+                {% endif %}
+
+                {% set chat_peer_id = req.owner_id if req.renter_id == session['user_id'] else req.renter_id %}
+                <form action="{{ url_for('start_conversation', item_id=req.item_id) }}" method="POST" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="peer_id" value="{{ chat_peer_id }}">
+                  <button type="submit" class="btn btn-sm btn-r2s-outline py-1 px-2" title="Private Chat about this listing">
+                    <i class="bi bi-chat-dots me-1"></i>Chat
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes snippet if any -->
+          {% if req.notes %}
+            <div class="mt-2 pt-2 border-top small text-secondary" style="border-color: rgba(168, 85, 247, 0.12) !important;">
+              <i class="bi bi-chat-left-text me-1 text-muted"></i>
+              <strong>Note:</strong> "{{ req.notes }}"
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="r2s-glass-card p-5 text-center my-4">
+      <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 52px; height: 52px; border-radius: 14px; font-size: 1.3rem;">
+        <i class="bi bi-arrow-left-right"></i>
+      </div>
+      <h5 class="fw-bold text-white mb-2">No requests in this section</h5>
+      <p class="text-secondary small mx-auto mb-4" style="max-width: 440px;">
+        You don't have any requests matching this tab right now. Explore the campus marketplace to rent, borrow, or swap gear.
+      </p>
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-primary px-4">
+        Explore Campus Catalog
+      </a>
+    </div>
+  {% endif %}
+
+  <!-- Rental Tracker Timeline Modal -->
+  <div class="modal fade" id="rentalTimelineModal" tabindex="-1" aria-labelledby="rentalTimelineModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content r2s-glass-card border-0" style="background: rgba(18, 12, 38, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(168, 85, 247, 0.3) !important;">
+        <div class="modal-header border-0 pb-0">
+          <div>
+            <h5 class="modal-title fw-bold text-white d-flex align-items-center gap-2" id="rentalTimelineModalLabel">
+              <i class="bi bi-clock-history text-purple"></i> Rental Tracker Timeline
+            </h5>
+            <p class="text-secondary small mb-0" id="rentalTimelineSubtitle">Live audit trail of request status transitions</p>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="rentalTimelineLoading" class="text-center py-4">
+            <div class="spinner-border text-purple" role="status">
+              <span class="visually-hidden">Loading history...</span>
+            </div>
+            <p class="text-secondary small mt-2">Loading lifecycle audit log...</p>
+          </div>
+
+          <div id="rentalTimelineError" class="alert alert-danger d-none small">
+            Unable to fetch tracker history. Please try again.
+          </div>
+
+          <div id="rentalTimelineContainer" class="d-none">
+            <div class="position-relative ps-4" id="timelineList" style="border-left: 2px solid rgba(168, 85, 247, 0.3); margin-left: 12px;">
+              <!-- Dynamic entries inserted here -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-sm btn-r2s-outline px-4" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function openRentalTimeline(requestId) {
+  const modalEl = document.getElementById('rentalTimelineModal');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const loadingEl = document.getElementById('rentalTimelineLoading');
+  const errorEl = document.getElementById('rentalTimelineError');
+  const containerEl = document.getElementById('rentalTimelineContainer');
+  const listEl = document.getElementById('timelineList');
+  const subtitleEl = document.getElementById('rentalTimelineSubtitle');
+
+  subtitleEl.textContent = `Live audit trail for Request #${requestId}`;
+  loadingEl.classList.remove('d-none');
+  errorEl.classList.add('d-none');
+  containerEl.classList.add('d-none');
+  listEl.innerHTML = '';
+
+  modal.show();
+
+  fetch(`/request/${requestId}/history`)
+    .then(res => res.json())
+    .then(data => {
+      loadingEl.classList.add('d-none');
+      if (!data.success || !data.history) {
+        errorEl.textContent = data.error || 'Failed to load timeline.';
+        errorEl.classList.remove('d-none');
+        return;
+      }
+
+      const titleEl = document.getElementById('rentalTimelineModalLabel');
+      if (titleEl) {
+        if (data.request_type === 'Sell') {
+          titleEl.innerHTML = '<i class="bi bi-clock-history text-purple"></i> Sale Status Timeline';
+        } else if (data.request_type === 'Exchange') {
+          titleEl.innerHTML = '<i class="bi bi-clock-history text-purple"></i> Swap Status Timeline';
+        } else {
+          titleEl.innerHTML = '<i class="bi bi-clock-history text-purple"></i> Rental Tracker Timeline';
+        }
+      }
+
+      if (data.history.length === 0) {
+        listEl.innerHTML = '<p class="text-secondary small mb-0">No transition logs found for this request.</p>';
+        containerEl.classList.remove('d-none');
+        return;
+      }
+
+      const statusBadges = {
+        'PENDING': 'bg-warning text-dark',
+        'ACTIVE': 'bg-success text-white',
+        'ACCEPTED': 'bg-info text-dark',
+        'RETURN_REQUESTED': 'bg-primary text-white',
+        'COMPLETED': 'bg-success text-white',
+        'OVERDUE': 'bg-danger text-white',
+        'REJECTED': 'bg-danger text-white',
+        'CANCELLED': 'bg-secondary text-white',
+        'DISPUTED': 'bg-danger text-white'
+      };
+
+      data.history.forEach((item) => {
+        const badgeClass = statusBadges[item.new_status] || 'bg-secondary text-white';
+        const actorName = item.user_name || (item.action_role ? String(item.action_role).toUpperCase() : 'System');
+        const node = document.createElement('div');
+        node.className = 'position-relative mb-4';
+
+        const dot = document.createElement('div');
+        dot.className = 'position-absolute';
+        dot.style.cssText = 'left: -25px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #a855f7; border: 3px solid #1f1147;';
+        node.appendChild(dot);
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'd-flex align-items-center gap-2 mb-1 flex-wrap';
+
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `badge ${badgeClass} rounded-pill px-2.5 py-1 small fw-semibold`;
+        statusBadge.textContent = item.new_status || '';
+        headerRow.appendChild(statusBadge);
+
+        if (item.previous_status) {
+          const prevSpan = document.createElement('span');
+          prevSpan.className = 'text-muted small';
+          prevSpan.textContent = `\u2190 was ${item.previous_status}`;
+          headerRow.appendChild(prevSpan);
+        }
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'text-secondary small ms-auto';
+        timeSpan.style.fontSize = '0.75rem';
+        timeSpan.textContent = item.created_at || '';
+        headerRow.appendChild(timeSpan);
+
+        node.appendChild(headerRow);
+
+        const actorDiv = document.createElement('div');
+        actorDiv.className = 'small text-white fw-semibold';
+        const actorIcon = document.createElement('i');
+        actorIcon.className = 'bi bi-person-fill text-muted me-1';
+        actorDiv.appendChild(actorIcon);
+        actorDiv.appendChild(document.createTextNode('Action by: '));
+        const actorSpan = document.createElement('span');
+        actorSpan.className = 'text-purple';
+        actorSpan.textContent = actorName;
+        actorDiv.appendChild(actorSpan);
+        node.appendChild(actorDiv);
+
+        if (item.notes) {
+          const notesDiv = document.createElement('div');
+          notesDiv.className = 'small text-secondary mt-1 p-2 rounded';
+          notesDiv.style.cssText = 'background: rgba(255,255,255,0.04); border-left: 2px solid #a855f7;';
+          notesDiv.textContent = item.notes;
+          node.appendChild(notesDiv);
+        }
+
+        listEl.appendChild(node);
+      });
+
+      containerEl.classList.remove('d-none');
+    })
+    .catch(err => {
+      loadingEl.classList.add('d-none');
+      errorEl.textContent = 'Network error fetching tracker timeline.';
+      errorEl.classList.remove('d-none');
+    });
+}
+</script>
+{% endblock %}

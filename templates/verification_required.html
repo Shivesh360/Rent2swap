@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Student Verification Required - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="verification-required-page" style="max-width: 680px;">
+  <div class="r2s-glass-card p-4 p-md-5 text-center">
+    <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 68px; height: 68px; border-radius: 20px; font-size: 2rem; {% if verification_status == 'Pending' %}background: linear-gradient(135deg, #f59e0b, #d97706);{% elif verification_status == 'Rejected' %}background: linear-gradient(135deg, #ef4444, #b91c1c);{% else %}background: linear-gradient(135deg, #7c3aed, #a855f7);{% endif %} color: #fff;">
+      {% if verification_status == 'Pending' %}
+        <i class="bi bi-clock-history"></i>
+      {% elif verification_status == 'Rejected' %}
+        <i class="bi bi-x-circle-fill"></i>
+      {% else %}
+        <i class="bi bi-shield-lock-fill"></i>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      {% if verification_status == 'Pending' %}
+        <span class="badge-r2s badge-r2s-swap" style="background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.45); color: #fcd34d;">
+          <i class="bi bi-hourglass-split me-1"></i>Pending
+        </span>
+      {% elif verification_status == 'Rejected' %}
+        <span class="badge-r2s" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5;">
+          <i class="bi bi-x-circle-fill me-1"></i>Rejected
+        </span>
+      {% else %}
+        <span class="badge-r2s" style="background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.4); color: #cbd5e1;">
+          <i class="bi bi-shield-exclamation me-1"></i>Not Submitted
+        </span>
+      {% endif %}
+    </div>
+
+    <h3 class="fw-bold text-white mb-2">Student Verification Required</h3>
+    <p class="text-secondary mb-3">
+      {{ message or "You must be a Verified Student to " ~ (action_label or "use marketplace features") ~ "." }}
+    </p>
+
+    {% if verification_status == 'Rejected' and rejection_reason %}
+      <div class="p-3 rounded-3 text-start mb-4" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35);">
+        <strong class="text-danger small d-block mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>Admin Rejection Feedback:</strong>
+        <span class="text-white small">{{ rejection_reason }}</span>
+      </div>
+    {% elif verification_status == 'Pending' %}
+      <div class="p-3 rounded-3 text-start mb-4" style="background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35);">
+        <strong class="text-warning small d-block mb-1"><i class="bi bi-info-circle-fill me-1"></i>Your verification request is under review.</strong>
+        <span class="text-white-50 small">Once a campus administrator approves your College ID Front and Back images, you will immediately unlock listing creation, rentals, purchases, and swaps.</span>
+      </div>
+    {% else %}
+      <div class="p-3 rounded-3 text-start mb-4" style="background: rgba(124, 58, 237, 0.14); border: 1px solid rgba(168, 85, 247, 0.35);">
+        <strong class="text-white small d-block mb-1"><i class="bi bi-person-vcard me-1"></i>What you need to verify:</strong>
+        <span class="text-secondary small">Submit your college enrollment details along with clear photos or PDFs of both your <strong>College ID Front</strong> and <strong>College ID Back</strong>. You can still browse all marketplace listings while unverified.</span>
+      </div>
+    {% endif %}
+
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      {% if verification_status == 'Pending' %}
+        <a href="{{ url_for('verification') }}" class="btn btn-r2s-primary px-4">
+          <i class="bi bi-pencil-square me-1"></i> Edit Verification Details
+        </a>
+      {% elif verification_status == 'Rejected' %}
+        <a href="{{ url_for('verification') }}" class="btn btn-danger px-4">
+          <i class="bi bi-arrow-repeat me-1"></i> Edit and Resubmit
+        </a>
+      {% else %}
+        <a href="{{ url_for('verification') }}" class="btn btn-r2s-primary px-4">
+          <i class="bi bi-shield-check me-1"></i> Verify Now
+        </a>
+      {% endif %}
+      <a href="{{ url_for('marketplace') }}" class="btn btn-r2s-outline px-4">
+        <i class="bi bi-shop me-1"></i> Browse Marketplace
+      </a>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-r2s-outline px-4">
+        <i class="bi bi-speedometer2 me-1"></i> Dashboard
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

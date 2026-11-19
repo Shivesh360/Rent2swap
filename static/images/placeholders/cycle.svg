@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_cycle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="180" fill="url(#grad_cycle)" />
+  <g transform="translate(0, -5)">
+    <circle cx="60" cy="115" r="28" stroke="#34d399" stroke-width="8" fill="none"/><circle cx="140" cy="115" r="28" stroke="#34d399" stroke-width="8" fill="none"/><path d="M60 115 L95 115 L120 75 L80 75 L60 115 M95 115 L85 65 L70 65 M120 75 L140 115 M115 65 L135 65" stroke="#047857" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <text x="100" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">Cycles & Mobility</text>
+</svg>

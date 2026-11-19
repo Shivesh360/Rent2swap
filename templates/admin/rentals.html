@@ -1,0 +1,204 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_title %}Rental &amp; Transaction Operations{% endblock %}
+
+{% block admin_content %}
+<div class="r2s-glass-card p-4">
+
+  <!-- Header & Filters -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h5 class="fw-bold text-white mb-1">Rental Handovers &amp; Transactions ({{ rentals|length }})</h5>
+      <p class="text-secondary small mb-0">Track ongoing campus borrowings, return timelines, overdue cases, and agreements.</p>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('admin_rentals', tab='all') }}" class="btn btn-sm {% if active_tab == 'all' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        All ({{ counts.all }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='pending') }}" class="btn btn-sm {% if active_tab == 'pending' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Pending ({{ counts.pending }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='active') }}" class="btn btn-sm {% if active_tab == 'active' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Active ({{ counts.active }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='return_requested') }}" class="btn btn-sm {% if active_tab == 'return_requested' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Return Requested ({{ counts.return_requested }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='overdue') }}" class="btn btn-sm {% if active_tab == 'overdue' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Overdue ({{ counts.overdue }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='disputed') }}" class="btn btn-sm {% if active_tab == 'disputed' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Disputed ({{ counts.disputed }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='completed') }}" class="btn btn-sm {% if active_tab == 'completed' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Completed ({{ counts.completed }})
+      </a>
+      <a href="{{ url_for('admin_rentals', tab='closed') }}" class="btn btn-sm {% if active_tab == 'closed' %}btn-r2s-primary{% else %}btn-r2s-outline{% endif %} rounded-pill px-3">
+        Declined / Closed ({{ counts.closed }})
+      </a>
+    </div>
+  </div>
+
+  <!-- Rentals Table -->
+  {% if rentals %}
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle mb-0" style="background: transparent;">
+        <thead>
+          <tr class="text-secondary small" style="border-color: rgba(168, 85, 247, 0.2);">
+            <th>Item &amp; ID</th>
+            <th>Lender (Owner)</th>
+            <th>Borrower (Renter)</th>
+            <th>Timeline</th>
+            <th>Total Value</th>
+            <th>Status</th>
+            <th class="text-end">Audit &amp; Agreement</th>
+          </tr>
+        </thead>
+        <tbody style="border-color: rgba(168, 85, 247, 0.15);">
+          {% for r in rentals %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <img src="{{ r.primary_image | image_url(r.item_category) }}" alt="{{ r.item_title }}" class="rounded-3 border" style="width: 44px; height: 44px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div>
+                    <strong class="text-white d-block text-truncate" style="max-width: 220px;" title="{{ r.item_title }}">
+                      {{ r.item_title }}
+                    </strong>
+                    <span class="small text-secondary">Req #{{ r.request_id }} &bull; {{ r.request_type }}</span>
+                    {% if r.offered_item_title %}
+                      <div class="small text-warning text-truncate" style="max-width: 220px; font-size: 0.72rem;" title="Offered in swap: {{ r.offered_item_title }}">
+                        <i class="bi bi-arrow-left-right me-1"></i>Swap with: {{ r.offered_item_title }}
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="text-white d-block small fw-semibold">{{ r.owner_name }}</span>
+                <span class="text-secondary small" style="font-size: 0.72rem;">{{ r.owner_college or 'Campus Member' }}</span>
+              </td>
+              <td>
+                <span class="text-white d-block small fw-semibold">{{ r.renter_name }}</span>
+                <span class="text-secondary small" style="font-size: 0.72rem;">{{ r.renter_college or 'Campus Member' }}</span>
+              </td>
+              <td>
+                {% if r.request_type == 'Sell' %}
+                  <div class="small text-white">Direct Campus Sale</div>
+                  <div class="small text-secondary" style="font-size: 0.72rem;">Requested: {{ (r.created_at|string)[:10] if r.created_at else 'N/A' }}</div>
+                {% elif r.request_type == 'Exchange' %}
+                  <div class="small text-warning">Direct Swap Trade</div>
+                  <div class="small text-secondary" style="font-size: 0.72rem;">Requested: {{ (r.created_at|string)[:10] if r.created_at else 'N/A' }}</div>
+                {% else %}
+                  <div class="small text-white">{{ r.start_date or 'N/A' }} &rarr; {{ r.due_date or 'N/A' }}</div>
+                  {% if r.returned_date %}
+                    <div class="small text-success" style="font-size: 0.72rem;">Returned: {{ r.returned_date }}</div>
+                  {% elif r.display_status == 'OVERDUE' %}
+                    <div class="small text-danger fw-bold" style="font-size: 0.72rem;">Past Due Date</div>
+                  {% endif %}
+                {% endif %}
+              </td>
+              <td>
+                {% if r.request_type == 'Exchange' and not (r.total_price or 0) %}
+                  <span class="badge-r2s badge-r2s-swap py-0 px-2">Swap</span>
+                {% else %}
+                  <strong class="text-success small">₹{{ "{:,.0f}".format(r.total_price or 0) }}</strong>
+                {% endif %}
+              </td>
+              <td>
+                {% if r.display_status == 'RETURN_REQUESTED' %}
+                  <span class="badge-r2s badge-r2s-swap">
+                    <i class="bi bi-arrow-repeat me-1"></i>Return Requested
+                  </span>
+                {% elif r.display_status == 'OVERDUE' %}
+                  <span class="badge-r2s badge-r2s-sell">
+                    <i class="bi bi-alarm-fill me-1"></i>OVERDUE
+                  </span>
+                {% elif r.status in ('ACCEPTED', 'ACTIVE') %}
+                  <span class="badge-r2s badge-r2s-verified">{% if r.request_type == 'Rent' %}Active{% else %}Accepted{% endif %}</span>
+                {% elif r.status == 'PENDING' %}
+                  <span class="badge-r2s badge-r2s-swap">Pending</span>
+                {% elif r.status == 'DISPUTED' %}
+                  <span class="badge-r2s badge-r2s-sell">Disputed</span>
+                {% elif r.status in ('COMPLETED', 'RETURNED') %}
+                  <span class="badge-r2s badge-r2s-verified">Completed</span>
+                {% else %}
+                  <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1">{{ r.status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex align-items-center gap-2">
+                  {% if r.agreement_accepted %}
+                    <span class="text-success small" title="Accepted at {{ r.agreement_accepted_at }}">
+                      <i class="bi bi-check-circle-fill me-1"></i>Signed
+                    </span>
+                  {% else %}
+                    <span class="text-muted small">Standard</span>
+                  {% endif %}
+                  <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2" data-bs-toggle="modal" data-bs-target="#rentalLogModal-{{ r.request_id }}" title="Inspect Status History">
+                    <i class="bi bi-clock-history"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="text-center py-5 text-secondary">
+      <i class="bi bi-arrow-left-right fs-1 d-block mb-2 text-muted"></i>
+      No rental transactions found under this category.
+    </div>
+  {% endif %}
+
+</div>
+
+{% if rentals %}
+  {% for r in rentals %}
+    <div class="modal fade text-start" id="rentalLogModal-{{ r.request_id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content r2s-glass-panel">
+          <div class="modal-header border-bottom border-secondary border-opacity-25">
+            <h6 class="modal-title fw-bold text-white">
+              <i class="bi bi-clock-history text-primary-light me-2"></i>Transaction #{{ r.request_id }} Timeline
+            </h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body small">
+            <div class="mb-2">
+              <strong class="text-white">{{ r.item_title }}</strong>
+              <span class="text-secondary d-block">{{ r.owner_name }} &harr; {{ r.renter_name }} ({{ r.request_type }})</span>
+            </div>
+            {% if r.notes %}
+              <div class="p-2 rounded-2 mb-3" style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(168, 85, 247, 0.2);">
+                <strong class="text-white d-block">Notes:</strong>
+                <span class="text-secondary">{{ r.notes }}</span>
+              </div>
+            {% endif %}
+            {% if r.status_logs %}
+              <div class="d-flex flex-column gap-2">
+                {% for lg in r.status_logs %}
+                  <div class="p-2 rounded-2 border" style="border-color: var(--r2s-glass-border) !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <span class="fw-bold text-white">{{ lg.previous_status or 'NEW' }} &rarr; {{ lg.new_status }}</span>
+                      <span class="text-muted" style="font-size: 0.72rem;">{{ lg.created_at[:16] if lg.created_at else '' }}</span>
+                    </div>
+                    <div class="text-secondary">{{ lg.notes or 'Status transitioned' }}</div>
+                    <div class="text-muted" style="font-size: 0.72rem;">By: {{ lg.changed_by_name or lg.action_role or 'System' }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-secondary">No detailed transition log entries recorded for this request yet (Current: {{ r.status }}).</div>
+            {% endif %}
+          </div>
+          <div class="modal-footer border-top border-secondary border-opacity-25">
+            <button type="button" class="btn btn-sm btn-r2s-outline" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

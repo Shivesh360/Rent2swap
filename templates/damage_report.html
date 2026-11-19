@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Report Damage - {{ rental.item_title }} | Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="damage-report-page" style="max-width: 820px;">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <a href="{{ url_for('my_requests') }}" class="btn btn-sm btn-link text-decoration-none ps-0 text-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Requests &amp; Rentals
+    </a>
+    <h2 class="fw-bold text-white mb-1">Damage &amp; Condition <span class="r2s-gradient-text">Report</span></h2>
+    <p class="text-secondary small">
+      File transparent condition evidence for peer mediation. Rent2Swap strictly prohibits arbitrary fixed penalties.
+    </p>
+  </div>
+
+  <!-- Item Reference Card -->
+  <div class="r2s-glass-card p-3 mb-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <span class="badge-r2s {% if rental.request_type == 'Sell' %}badge-r2s-sell{% elif rental.request_type == 'Exchange' %}badge-r2s-swap{% else %}badge-r2s-rent{% endif %} py-0 px-2 mb-1">{{ rental.request_type }}</span>
+        <h5 class="fw-bold text-white mb-1">{{ rental.item_title }}</h5>
+        <div class="small text-secondary">
+          {% if rental.request_type == 'Sell' %}
+            Seller: <strong class="text-white">{{ rental.owner_name }}</strong> &bull; Buyer: <strong class="text-white">{{ rental.renter_name }}</strong>
+          {% elif rental.request_type == 'Exchange' %}
+            Owner: <strong class="text-white">{{ rental.owner_name }}</strong> &bull; Proposer: <strong class="text-white">{{ rental.renter_name }}</strong>
+          {% else %}
+            Owner: <strong class="text-white">{{ rental.owner_name }}</strong> &bull; Renter: <strong class="text-white">{{ rental.renter_name }}</strong>
+          {% endif %}
+        </div>
+      </div>
+      <div class="text-end">
+        <span class="badge-r2s badge-r2s-swap">Dispute Assessment</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4-Step Transparent Resolution Protocol -->
+  <div class="r2s-glass-card p-4 mb-4">
+    <h6 class="fw-bold text-white mb-3">Fair Peer Mediation Workflow</h6>
+    <div class="row g-2 text-center small">
+      <div class="col-6 col-md-3">
+        <div class="p-2 rounded-3 border" style="background: rgba(124, 58, 237, 0.15); border-color: rgba(168, 85, 247, 0.3) !important;">
+          <i class="bi bi-flag-fill text-warning d-block fs-5 mb-1"></i>
+          <strong class="text-white d-block">1. Damage Filed</strong>
+          <span class="text-secondary" style="font-size: 0.72rem;">Evidence submission</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-2 rounded-3 border" style="background: var(--r2s-card-panel-bg); border-color: var(--r2s-glass-border) !important;">
+          <i class="bi bi-images text-info d-block fs-5 mb-1"></i>
+          <strong class="text-white d-block">2. Evidence Review</strong>
+          <span class="text-secondary" style="font-size: 0.72rem;">Photos &amp; timestamps</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-2 rounded-3 border" style="background: var(--r2s-card-panel-bg); border-color: var(--r2s-glass-border) !important;">
+          <i class="bi bi-sliders text-primary-light d-block fs-5 mb-1"></i>
+          <strong class="text-white d-block">3. Severity Check</strong>
+          <span class="text-secondary" style="font-size: 0.72rem;">Minor vs structural</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-2 rounded-3 border" style="background: var(--r2s-card-panel-bg); border-color: var(--r2s-glass-border) !important;">
+          <i class="bi bi-shield-check text-success d-block fs-5 mb-1"></i>
+          <strong class="text-white d-block">4. Fair Resolution</strong>
+          <span class="text-secondary" style="font-size: 0.72rem;">No arbitrary penalty</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Damage Report Form -->
+  <div class="r2s-glass-card p-4 p-md-5 mb-4">
+    <form action="{{ url_for('damage_report', request_id=rental.request_id) }}" method="POST" enctype="multipart/form-data" id="damage-report-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <!-- Severity Selection -->
+      <div class="mb-4">
+        <label class="form-label text-white fw-bold">Select Observed Damage Severity <span class="text-danger">*</span></label>
+        <div class="row g-2">
+          <!-- Minor -->
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="severity" id="sev-minor" value="Minor" autocomplete="off" checked>
+            <label class="btn btn-r2s-outline w-100 py-3 text-start d-flex flex-column gap-1" for="sev-minor">
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="fw-bold text-white">Minor Scuff / Wear</span>
+                <span class="badge-r2s badge-r2s-swap py-0 px-2" style="font-size: 0.65rem;">Cosmetic</span>
+              </div>
+              <span class="text-secondary small" style="font-size: 0.78rem;">Light surface scratches, cosmetic marks, normal wear.</span>
+            </label>
+          </div>
+
+          <!-- Moderate -->
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="severity" id="sev-moderate" value="Moderate" autocomplete="off">
+            <label class="btn btn-r2s-outline w-100 py-3 text-start d-flex flex-column gap-1" for="sev-moderate">
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="fw-bold text-white">Moderate Damage</span>
+                <span class="badge-r2s badge-r2s-rent py-0 px-2" style="font-size: 0.65rem;">Repairable</span>
+              </div>
+              <span class="text-secondary small" style="font-size: 0.78rem;">Detached part, broken accessory, repairable glitch.</span>
+            </label>
+          </div>
+
+          <!-- Severe -->
+          <div class="col-md-4">
+            <input type="radio" class="btn-check" name="severity" id="sev-severe" value="Severe" autocomplete="off">
+            <label class="btn btn-r2s-outline w-100 py-3 text-start d-flex flex-column gap-1" for="sev-severe">
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="fw-bold text-white">Severe / Malfunction</span>
+                <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); color: #fda4af; font-size: 0.65rem;">Major</span>
+              </div>
+              <span class="text-secondary small" style="font-size: 0.78rem;">Major structural breakage, device power failure, total loss.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description of Damage -->
+      <div class="mb-4">
+        <label for="damage-description" class="form-label text-white fw-bold">Detailed Damage Description <span class="text-danger">*</span></label>
+        <textarea name="description" id="damage-description" rows="4" class="form-control r2s-input" placeholder="Clearly describe how and where the item was damaged, when it was noticed, and what parts are affected..." required minlength="15"></textarea>
+        <div class="form-text small text-muted">Objective, factual statements expedite mutual peer resolution.</div>
+      </div>
+
+      <!-- Photo Evidence Upload -->
+      <div class="mb-4">
+        <label for="damage-photo" class="form-label text-white fw-bold">Attach Photographic Evidence (JPG, PNG, WEBP)</label>
+        <input type="file" name="damage_photo" id="damage-photo" class="form-control r2s-input" accept=".jpg,.jpeg,.png,.webp">
+        <div class="form-text small text-muted">Clear, focused photos showing the damaged areas in good light.</div>
+      </div>
+
+      <!-- Policy Clarification Note -->
+      <div class="p-3 r2s-panel-box mb-4">
+        <i class="bi bi-shield-check text-success me-1"></i>
+        <strong class="text-white small">Rent2Swap Fair Compensation Policy:</strong>
+        <p class="text-secondary small mb-0 mt-1">
+          Owners do not unilaterally set arbitrary penalties. If repairs or replacement costs are necessary, third-party repair estimates and peer mediator recommendations guide the fair resolution.
+        </p>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+        <a href="{{ url_for('my_requests') }}" class="btn btn-r2s-outline px-4">Cancel</a>
+        <button type="submit" class="btn btn-r2s-primary px-5" id="submit-damage-btn">
+          <i class="bi bi-shield-exclamation me-1"></i> Submit Report for Mediation
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Previously Logged Reports if any -->
+  {% if existing_reports %}
+    <div class="r2s-glass-card p-4">
+      <h6 class="fw-bold text-white mb-3">Filed Reports for this Rental</h6>
+      <div class="d-flex flex-column gap-2">
+        {% for rep in existing_reports %}
+          <div class="p-3 r2s-panel-box">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="badge-r2s badge-r2s-swap">{{ rep.severity }} Severity</span>
+              <span class="badge-r2s badge-r2s-verified">{{ rep.status }}</span>
+            </div>
+            <p class="text-white small mb-1">{{ rep.description }}</p>
+            {% if rep.photo_path %}
+              <div class="mb-1">
+                <a href="{{ url_for('serve_damage_report_photo', report_id=rep.report_id) }}" target="_blank" rel="noopener" class="small text-info text-decoration-none">
+                  <i class="bi bi-paperclip me-1"></i>View Attached Evidence Photo
+                </a>
+              </div>
+            {% endif %}
+            <div class="small text-muted" style="font-size: 0.72rem;">Filed on: {{ rep.created_at }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

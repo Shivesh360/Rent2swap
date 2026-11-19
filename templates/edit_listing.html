@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Listing - {{ item.title }} | Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="edit-listing-page" style="max-width: 840px;">
+
+  <div class="mb-4">
+    <a href="{{ url_for('item_details', item_id=item.item_id) }}" class="btn btn-sm btn-link text-decoration-none ps-0 text-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Listing Details
+    </a>
+    <h2 class="fw-bold text-white mb-1">Edit <span class="r2s-gradient-text">Listing</span></h2>
+    <p class="text-secondary small">Update gear specifications, adjust campus rental rates, or update availability.</p>
+  </div>
+
+  <div class="r2s-glass-card p-4 p-md-5">
+    <form action="{{ url_for('edit_listing', item_id=item.item_id) }}" method="POST" enctype="multipart/form-data" id="edit-listing-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Status Selection -->
+      <div class="p-3 r2s-panel-box mb-4">
+        <label for="item-status" class="form-label fw-bold text-white">Listing Availability Status</label>
+        <select name="status" id="item-status" class="form-select r2s-input">
+          {% for st in statuses %}
+            <option value="{{ st }}" {% if item.status == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text small text-muted">Set to 'Available' for public discovery, or mark as 'Inactive', 'Rented', or 'Sold'.</div>
+      </div>
+
+      <!-- Section 1: Basic Information -->
+      <h5 class="fw-bold text-white mb-3 pb-2 border-bottom d-flex align-items-center gap-2" style="border-color: rgba(168, 85, 247, 0.2) !important;">
+        <span class="r2s-brand-logo-icon" style="width: 26px; height: 26px; font-size: 0.8rem; border-radius: 8px;">1</span>
+        <span>Item Overview</span>
+      </h5>
+
+      <div class="mb-3">
+        <label for="item-title" class="form-label">Item Title <span class="text-danger">*</span></label>
+        <input type="text" name="title" id="item-title" class="form-control r2s-input" value="{{ item.title }}" required minlength="3">
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="item-category" class="form-label">Category <span class="text-danger">*</span></label>
+          <select name="category" id="item-category" class="form-select r2s-input" required>
+            {% for cat in categories %}
+              <option value="{{ cat }}" {% if item.category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label for="item-condition" class="form-label">Condition <span class="text-danger">*</span></label>
+          <select name="condition" id="item-condition" class="form-select r2s-input" required>
+            {% for cond in conditions %}
+              <option value="{{ cond }}" {% if item.condition == cond %}selected{% endif %}>{{ cond }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 2: Transaction & Pricing -->
+      <h5 class="fw-bold text-white mb-3 pb-2 border-bottom d-flex align-items-center gap-2" style="border-color: rgba(168, 85, 247, 0.2) !important;">
+        <span class="r2s-brand-logo-icon" style="width: 26px; height: 26px; font-size: 0.8rem; border-radius: 8px;">2</span>
+        <span>Deal Type &amp; Pricing</span>
+      </h5>
+
+      <div class="mb-3">
+        <label class="form-label d-block">Transaction Type <span class="text-danger">*</span></label>
+        <div class="row g-2">
+          <!-- Rent -->
+          <div class="col-4">
+            <input type="radio" class="btn-check" name="transaction_type" id="type-rent" value="Rent" autocomplete="off" {% if item.transaction_type == 'Rent' %}checked{% endif %}>
+            <label class="btn btn-r2s-outline w-100 py-2 fw-semibold d-flex flex-column align-items-center gap-1" for="type-rent">
+              <i class="bi bi-clock-history fs-5" style="color: #34d399;"></i>
+              <span>Rent</span>
+            </label>
+          </div>
+          <!-- Swap -->
+          <div class="col-4">
+            <input type="radio" class="btn-check" name="transaction_type" id="type-exchange" value="Exchange" autocomplete="off" {% if item.transaction_type == 'Exchange' %}checked{% endif %}>
+            <label class="btn btn-r2s-outline w-100 py-2 fw-semibold d-flex flex-column align-items-center gap-1" for="type-exchange">
+              <i class="bi bi-arrow-left-right fs-5" style="color: #fbbf24;"></i>
+              <span>Swap</span>
+            </label>
+          </div>
+          <!-- Sell -->
+          <div class="col-4">
+            <input type="radio" class="btn-check" name="transaction_type" id="type-sell" value="Sell" autocomplete="off" {% if item.transaction_type == 'Sell' %}checked{% endif %}>
+            <label class="btn btn-r2s-outline w-100 py-2 fw-semibold d-flex flex-column align-items-center gap-1" for="type-sell">
+              <i class="bi bi-tag-fill fs-5" style="color: #c084fc;"></i>
+              <span>Sell</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Price Container: RENT -->
+      <div id="pricing-rent-container" class="p-3 r2s-panel-box mb-4 {% if item.transaction_type != 'Rent' %}d-none{% endif %}">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="item-rent-amount" class="form-label">Rental Rate (₹)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);">₹</span>
+              <input type="number" name="rent_amount" id="item-rent-amount" class="form-control r2s-input border-start-0" value="{{ item.rent_amount or '' }}" min="1" step="any">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label for="item-rent-period" class="form-label">Rental Period</label>
+            <select name="rent_period" id="item-rent-period" class="form-select r2s-input">
+              {% for p in rent_periods %}
+                <option value="{{ p }}" {% if item.rent_period == p %}selected{% endif %}>Per {{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Price Container: SWAP / EXCHANGE -->
+      <div id="pricing-exchange-container" class="p-3 r2s-panel-box mb-4 {% if item.transaction_type != 'Exchange' %}d-none{% endif %}">
+        <div class="mb-3">
+          <label for="item-exchange-pref" class="form-label">Desired Item in Swap / Trade</label>
+          <input type="text" name="exchange_preference" id="item-exchange-pref" class="form-control r2s-input" value="{{ item.exchange_preference or '' }}" placeholder="Items you are willing to accept">
+        </div>
+        <div>
+          <label for="item-est-value" class="form-label">Estimated Value (₹, Optional)</label>
+          <input type="number" name="estimated_value" id="item-est-value" class="form-control r2s-input" value="{{ item.price or '' }}" min="0" step="any">
+        </div>
+      </div>
+
+      <!-- Dynamic Price Container: SELL -->
+      <div id="pricing-sell-container" class="p-3 r2s-panel-box mb-4 {% if item.transaction_type != 'Sell' %}d-none{% endif %}">
+        <label for="item-price" class="form-label">Selling Price (₹)</label>
+        <div class="input-group">
+          <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);">₹</span>
+          <input type="number" name="price" id="item-price" class="form-control r2s-input border-start-0" value="{{ item.price or '' }}" min="1" step="any">
+        </div>
+      </div>
+
+      <!-- Section 3: Specifications & Location -->
+      <h5 class="fw-bold text-white mb-3 pb-2 border-bottom d-flex align-items-center gap-2" style="border-color: rgba(168, 85, 247, 0.2) !important;">
+        <span class="r2s-brand-logo-icon" style="width: 26px; height: 26px; font-size: 0.8rem; border-radius: 8px;">3</span>
+        <span>Specs &amp; Location</span>
+      </h5>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label for="item-brand" class="form-label">Brand</label>
+          <input type="text" name="brand" id="item-brand" class="form-control r2s-input" value="{{ item.brand or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label for="item-model" class="form-label">Model / Spec</label>
+          <input type="text" name="model" id="item-model" class="form-control r2s-input" value="{{ item.model or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label for="item-age" class="form-label">Item Age</label>
+          <input type="text" name="age" id="item-age" class="form-control r2s-input" value="{{ item.age or '' }}">
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label for="item-city" class="form-label">City <span class="text-danger">*</span></label>
+          <input type="text" name="city" id="item-city" class="form-control r2s-input" value="{{ item.city }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="item-location" class="form-label">Campus / Handover Area <span class="text-danger">*</span></label>
+          <input type="text" name="location" id="item-location" class="form-control r2s-input" value="{{ item.location }}" required>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label for="item-description" class="form-label">Description <span class="text-danger">*</span></label>
+        <textarea name="description" id="item-description" rows="4" class="form-control r2s-input" required minlength="10">{{ item.description }}</textarea>
+      </div>
+
+      <!-- Section 4: Photos -->
+      <h5 class="fw-bold text-white mb-3 pb-2 border-bottom d-flex align-items-center gap-2" style="border-color: rgba(168, 85, 247, 0.2) !important;">
+        <span class="r2s-brand-logo-icon" style="width: 26px; height: 26px; font-size: 0.8rem; border-radius: 8px;">4</span>
+        <span>Photos &amp; Media</span>
+      </h5>
+
+      {% if images %}
+        <div class="mb-4 p-3 r2s-glass-card" style="border-color: var(--r2s-glass-border);">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label mb-0 fw-bold text-white small">Current Active Photos ({{ images|length }})</label>
+            <span class="small text-muted">Click 'Delete' on photos you want removed on save</span>
+          </div>
+          <div class="d-flex gap-3 flex-wrap" id="existing-photos-grid">
+            {% for img in images %}
+              <div class="position-relative existing-photo-item" id="existing-photo-{{ img.image_id }}" style="width: 105px;">
+                <div class="rounded-3 border overflow-hidden position-relative shadow-sm r2s-card-img-container" style="width: 105px; height: 105px; border-color: var(--r2s-glass-border) !important;">
+                  <img src="{{ img.image_path | image_url(item.category) }}" alt="Photo" class="existing-img-preview" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.2s ease;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  {% if img.is_primary %}
+                    <span class="badge-r2s badge-r2s-verified position-absolute top-0 start-0 m-1" style="font-size: 0.6rem; padding: 2px 6px;">Cover</span>
+                  {% endif %}
+                  <span class="badge bg-danger position-absolute top-50 start-50 translate-middle d-none text-uppercase fw-bold marked-badge" style="font-size: 0.55rem;">Will Delete</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-1 mt-1 w-100 delete-toggle-btn" style="font-size: 0.72rem;" onclick="toggleDeleteExistingImage(this, '{{ img.image_id }}')">
+                  <i class="bi bi-trash3 me-1"></i>Delete
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+          <div id="delete-inputs-container"></div>
+        </div>
+      {% endif %}
+
+      <div class="mb-4">
+        <label class="form-label d-block fw-bold text-white">Add More Photos (JPG, PNG, WEBP)</label>
+
+        <!-- Interactive Drag & Drop Box -->
+        <div id="image-drop-zone" class="p-4 rounded-3 text-center mb-3" style="border: 2px dashed var(--r2s-glass-border); background: rgba(124, 58, 237, 0.04); cursor: pointer; transition: all 0.2s ease;">
+          <i class="bi bi-cloud-arrow-up text-primary-light display-6 mb-2 d-block"></i>
+          <h6 class="fw-bold text-white mb-1">Click to select new photos or drag &amp; drop files here</h6>
+          <p class="small text-secondary mb-2">
+            New photos will be appended to your listing gallery. Up to 8 photos total per listing.
+          </p>
+          <button type="button" class="btn btn-sm btn-r2s-outline px-3" onclick="document.getElementById('item-images').click()">
+            <i class="bi bi-images me-1"></i> Choose Additional Photos
+          </button>
+        </div>
+
+        <!-- Multi-file input synchronized via DataTransfer -->
+        <input type="file" name="images" id="item-images" class="d-none" multiple accept="image/jpeg,image/png,image/webp,image/jpg">
+
+        <!-- Status & Actions Bar -->
+        <div id="image-status-bar" class="d-none d-flex justify-content-between align-items-center mb-2 px-1 small text-secondary">
+          <span class="photo-count-text"></span>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2" onclick="document.getElementById('item-images').click()">
+              <i class="bi bi-plus-lg me-1"></i>Add More
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0.5 px-2" onclick="window.r2sUploader && window.r2sUploader.clearAll()">
+              <i class="bi bi-trash3 me-1"></i>Clear New
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline Warnings/Alerts Container -->
+        <div id="image-alert-container"></div>
+
+        <!-- Previews Gallery Container -->
+        <div id="image-preview-container" class="d-flex gap-2 flex-wrap mt-2"></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+        <a href="{{ url_for('item_details', item_id=item.item_id) }}" class="btn btn-r2s-outline px-4">Cancel</a>
+        <button type="submit" class="btn btn-r2s-primary px-5" id="save-changes-btn">
+          <i class="bi bi-check-lg me-1"></i> Save Changes
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+
+<script>
+  const radioRent = document.getElementById('type-rent');
+  const radioExchange = document.getElementById('type-exchange');
+  const radioSell = document.getElementById('type-sell');
+
+  const containerRent = document.getElementById('pricing-rent-container');
+  const containerExchange = document.getElementById('pricing-exchange-container');
+  const containerSell = document.getElementById('pricing-sell-container');
+
+  function setInputsDisabled(container, disabled) {
+    if (!container) return;
+    const inputs = container.querySelectorAll('input, select, textarea');
+    inputs.forEach(inp => {
+      inp.disabled = disabled;
+    });
+  }
+
+  function updatePricingContainers() {
+    if (radioRent && radioRent.checked) {
+      containerRent.classList.remove('d-none');
+      setInputsDisabled(containerRent, false);
+      containerExchange.classList.add('d-none');
+      setInputsDisabled(containerExchange, true);
+      containerSell.classList.add('d-none');
+      setInputsDisabled(containerSell, true);
+    } else if (radioExchange && radioExchange.checked) {
+      containerRent.classList.add('d-none');
+      setInputsDisabled(containerRent, true);
+      containerExchange.classList.remove('d-none');
+      setInputsDisabled(containerExchange, false);
+      containerSell.classList.add('d-none');
+      setInputsDisabled(containerSell, true);
+    } else if (radioSell && radioSell.checked) {
+      containerRent.classList.add('d-none');
+      setInputsDisabled(containerRent, true);
+      containerExchange.classList.add('d-none');
+      setInputsDisabled(containerExchange, true);
+      containerSell.classList.remove('d-none');
+      setInputsDisabled(containerSell, false);
+    }
+  }
+
+  [radioRent, radioExchange, radioSell].forEach(r => {
+    if (r) r.addEventListener('change', updatePricingContainers);
+  });
+  updatePricingContainers();
+
+  // Toggle deletion of existing photos
+  function toggleDeleteExistingImage(btn, imageId) {
+    const photoCard = document.getElementById('existing-photo-' + imageId);
+    const deleteContainer = document.getElementById('delete-inputs-container');
+    if (!photoCard || !deleteContainer) return;
+
+    const imgEl = photoCard.querySelector('.existing-img-preview');
+    const badgeEl = photoCard.querySelector('.marked-badge');
+    let inputEl = deleteContainer.querySelector(`input[value="${imageId}"]`);
+
+    if (inputEl) {
+      // Undo deletion
+      inputEl.remove();
+      if (imgEl) imgEl.style.opacity = '1';
+      if (badgeEl) badgeEl.classList.add('d-none');
+      btn.classList.remove('btn-danger');
+      btn.classList.add('btn-outline-danger');
+      btn.innerHTML = '<i class="bi bi-trash3 me-1"></i>Delete';
+    } else {
+      // Mark for deletion
+      inputEl = document.createElement('input');
+      inputEl.type = 'hidden';
+      inputEl.name = 'delete_image_ids';
+      inputEl.value = imageId;
+      deleteContainer.appendChild(inputEl);
+
+      if (imgEl) imgEl.style.opacity = '0.35';
+      if (badgeEl) badgeEl.classList.remove('d-none');
+      btn.classList.remove('btn-outline-danger');
+      btn.classList.add('btn-danger');
+      btn.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i>Undo';
+    }
+  }
+</script>
+<script src="{{ url_for('static', filename='js/multi-image-uploader.js') }}"></script>
+{% endblock %}

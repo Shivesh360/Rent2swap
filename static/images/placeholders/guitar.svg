@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_guitar" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="180" fill="url(#grad_guitar)" />
+  <g transform="translate(0, -5)">
+    <path d="M75 125 C65 105 80 85 75 65 C70 50 85 45 90 40 L110 40 C115 45 130 50 125 65 C120 85 135 105 125 125 C115 145 85 145 75 125 Z" fill="#f59e0b"/><circle cx="100" cy="95" r="12" fill="#78350f"/><rect x="97" y="30" width="6" height="35" fill="#78350f"/>
+  </g>
+  <text x="100" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">Musical Instruments</text>
+</svg>

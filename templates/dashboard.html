@@ -1,0 +1,606 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-3" id="dashboard-page">
+
+  <!-- ==============================================================================
+       1. Student Profile & Welcome Header
+       ============================================================================== -->
+  <div class="r2s-glass-card p-4 mb-4 position-relative overflow-hidden">
+    <div class="position-absolute top-0 end-0 w-50 h-100" style="background: radial-gradient(circle at 100% 0%, rgba(124, 58, 237, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 position-relative" style="z-index: 2;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="r2s-brand-logo-icon" style="width: 58px; height: 58px; border-radius: 16px; font-size: 1.6rem; font-weight: 800;">
+          {{ user.name[0] | upper }}
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h3 class="fw-bold text-white mb-0">Welcome back, {{ user.name }}!</h3>
+            {% if user.verification_status == 'Verified' %}
+              <span class="badge-r2s badge-r2s-verified"><i class="bi bi-patch-check-fill me-1"></i>Verified Student</span>
+            {% elif user.verification_status == 'Pending' %}
+              <span class="badge-r2s badge-r2s-swap" style="background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.45); color: #fcd34d;">
+                <i class="bi bi-clock-history me-1"></i>Pending
+              </span>
+            {% elif user.verification_status == 'Rejected' %}
+              <span class="badge-r2s" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5;">
+                <i class="bi bi-x-circle-fill me-1"></i>Rejected
+              </span>
+            {% else %}
+              <span class="badge-r2s" style="background: rgba(148, 163, 184, 0.18); border: 1px solid rgba(148, 163, 184, 0.35); color: #cbd5e1;">
+                <i class="bi bi-shield-exclamation me-1"></i>Not Submitted
+              </span>
+            {% endif %}
+          </div>
+          <div class="small text-secondary mt-1 d-flex align-items-center gap-2 flex-wrap">
+            <span><i class="bi bi-building me-1"></i>{{ user.college or 'Campus Member' }}</span>
+            <span>&bull;</span>
+            <span><i class="bi bi-geo-alt me-1 text-danger"></i>{{ user.location }}</span>
+            <span>&bull;</span>
+            <span class="text-warning"><i class="bi bi-star-fill"></i> {{ "%.1f"|format(metrics.rating or 5.0) }} Peer Trust</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary btn-sm px-3">
+          <i class="bi bi-plus-circle me-1"></i> Post Gear
+        </a>
+        <a href="{{ url_for('inbox') }}" class="btn btn-r2s-outline btn-sm px-3" id="dashboard-inbox-btn">
+          <i class="bi bi-chat-dots me-1"></i> Inbox
+          {% if (unread_messages_count or 0) > 0 %}
+            <span class="badge rounded-pill bg-primary ms-1">{{ unread_messages_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('my_requests') }}" class="btn btn-r2s-outline btn-sm px-3">
+          <i class="bi bi-arrow-left-right me-1"></i> My Rentals
+        </a>
+        <a href="{{ url_for('profile') }}" class="btn btn-r2s-outline btn-sm px-3">
+          <i class="bi bi-person-circle me-1"></i> Profile
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Database-Backed Student Verification Status Section -->
+  {% if user.verification_status == 'Not Submitted' %}
+  <div id="dashboard-verification-card" class="r2s-glass-card p-4 mb-4" style="background: rgba(124, 58, 237, 0.14); border: 1px solid rgba(168, 85, 247, 0.45) !important;">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div class="d-flex align-items-start gap-3">
+        <div class="r2s-brand-logo-icon flex-shrink-0" style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff;">
+          <i class="bi bi-shield-lock-fill fs-4"></i>
+        </div>
+        <div>
+          <span class="badge-r2s mb-1" style="background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.4); color: #e2e8f0;">Verification Required</span>
+          <h5 class="fw-bold text-white mb-1">Verify Your Student Identity to Access Rent2Swap Features.</h5>
+          <p class="text-secondary small mb-0">
+            Please submit your college details along with clear photos of both your <strong>College ID Front</strong> and <strong>College ID Back</strong> images to unlock creating listings, rental requests, purchases, and swaps. You can still browse all listings while unverified.
+          </p>
+        </div>
+      </div>
+      <div class="flex-shrink-0">
+        <a href="{{ url_for('verification') }}" class="btn btn-r2s-primary px-4 fw-semibold" id="dashboard-verify-now-btn">
+          <i class="bi bi-shield-check me-1"></i> Verify Now
+        </a>
+      </div>
+    </div>
+  </div>
+  {% elif user.verification_status == 'Pending' %}
+  <div id="dashboard-verification-card" class="r2s-glass-card p-3 p-md-4 mb-4" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4) !important;">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div class="d-flex align-items-start gap-3">
+        <div class="r2s-brand-logo-icon flex-shrink-0" style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
+          <i class="bi bi-hourglass-split fs-5"></i>
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <span class="badge-r2s badge-r2s-swap" style="background: rgba(245, 158, 11, 0.22); border-color: rgba(245, 158, 11, 0.5); color: #fcd34d;">
+              <i class="bi bi-clock-history me-1"></i>Pending
+            </span>
+            <strong class="text-white">Your verification request is under review.</strong>
+          </div>
+          <div class="text-secondary small">
+            Submitted: <span class="text-white">{{ (user.verification_resubmitted_at or user.verification_submitted_at or 'Recently')[:16] }}</span>
+            {% if user.college %}&bull; College: <span class="text-white">{{ user.college }}</span>{% endif %}
+            {% if user.enrollment_no %}&bull; Roll No: <span class="text-white">{{ user.enrollment_no }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="flex-shrink-0">
+        <a href="{{ url_for('verification') }}" class="btn btn-sm btn-r2s-outline px-3" id="dashboard-edit-verif-btn">
+          <i class="bi bi-pencil-square me-1"></i> Edit Verification Details
+        </a>
+      </div>
+    </div>
+  </div>
+  {% elif user.verification_status == 'Rejected' %}
+  <div id="dashboard-verification-card" class="r2s-glass-card p-4 mb-4" style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45) !important;">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div class="d-flex align-items-start gap-3">
+        <div class="r2s-brand-logo-icon flex-shrink-0" style="width: 46px; height: 46px; border-radius: 13px; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff;">
+          <i class="bi bi-x-circle-fill fs-5"></i>
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <span class="badge-r2s" style="background: rgba(239, 68, 68, 0.25); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5;">
+              <i class="bi bi-x-circle-fill me-1"></i>Rejected
+            </span>
+            <strong class="text-white">Verification Requires Correction &amp; Resubmission</strong>
+          </div>
+          <p class="text-white-50 small mb-0">
+            <strong class="text-danger">Reason:</strong> {{ user.verification_rejection_reason or 'Please update your details and upload clear College ID Front and Back images.' }}
+          </p>
+        </div>
+      </div>
+      <div class="flex-shrink-0">
+        <a href="{{ url_for('verification') }}" class="btn btn-sm btn-danger px-4 fw-semibold" id="dashboard-resubmit-verif-btn">
+          <i class="bi bi-arrow-repeat me-1"></i> Edit &amp; Resubmit
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- Security Notice for Existing Accounts Without Question -->
+  {% if not user.security_question %}
+  <div class="alert alert-warning border-0 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 p-3 mb-4 rounded-3 shadow-sm" style="background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.4) !important;">
+    <div class="d-flex align-items-center gap-3">
+      <div class="p-2 rounded-circle" style="background: rgba(245, 158, 11, 0.25);">
+        <i class="bi bi-shield-exclamation fs-4 text-warning"></i>
+      </div>
+      <div>
+        <strong class="text-white d-block">Security Action Recommended: Set Your Recovery Question</strong>
+        <span class="text-secondary small">Your account does not have a security question set. Configure one now to enable instant self-service password recovery if you ever forget your password.</span>
+      </div>
+    </div>
+    <a href="{{ url_for('profile') }}#security-settings" class="btn btn-sm btn-warning text-dark fw-bold text-nowrap align-self-start align-self-sm-center">
+      <i class="bi bi-shield-lock me-1"></i>Configure Now
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- ==============================================================================
+       2. Summary Statistic Cards (4-col Desktop, 2-col Tablet, 1-col Mobile)
+       ============================================================================== -->
+  <div class="row g-3 mb-4">
+    <!-- Stat 1: My Active Gear -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="r2s-glass-card p-3 h-100 dashboard-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small text-secondary fw-semibold">My Active Gear</span>
+          <div class="r2s-brand-logo-icon" style="width: 34px; height: 34px; border-radius: 9px; font-size: 0.95rem;">
+            <i class="bi bi-box-seam"></i>
+          </div>
+        </div>
+        <div class="d-flex align-items-baseline gap-2">
+          <span class="dashboard-stat-num text-white">{{ metrics.my_active }}</span>
+          <span class="small text-muted">/ {{ metrics.my_total }} total</span>
+        </div>
+        <a href="{{ url_for('my_listings') }}" class="small text-decoration-none mt-2 d-inline-block fw-semibold" style="color: var(--r2s-primary-light);">Manage listings &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Stat 2: Active Rentals & Borrows -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="r2s-glass-card p-3 h-100 dashboard-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small text-secondary fw-semibold">Active Rentals</span>
+          <div class="r2s-brand-logo-icon" style="width: 34px; height: 34px; border-radius: 9px; font-size: 0.95rem; background: linear-gradient(135deg, #10b981, #06b6d4);">
+            <i class="bi bi-clock-history"></i>
+          </div>
+        </div>
+        <div class="dashboard-stat-num text-success">{{ metrics.active_rentals_count }}</div>
+        <a href="{{ url_for('my_requests', tab='active') }}" class="small text-decoration-none mt-2 d-inline-block text-success fw-semibold">View active items &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Stat 3: Pending Requests -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="r2s-glass-card p-3 h-100 dashboard-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small text-secondary fw-semibold">Pending Requests</span>
+          <div class="r2s-brand-logo-icon" style="width: 34px; height: 34px; border-radius: 9px; font-size: 0.95rem; background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <i class="bi bi-bell"></i>
+          </div>
+        </div>
+        <div class="dashboard-stat-num text-warning">{{ metrics.pending_requests_count }}</div>
+        <a href="{{ url_for('my_requests') }}" class="small text-decoration-none mt-2 d-inline-block text-warning fw-semibold">Respond to offers &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Stat 4: Peer Trust Score -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="r2s-glass-card p-3 h-100 dashboard-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small text-secondary fw-semibold">Peer Trust Score</span>
+          <div class="r2s-brand-logo-icon" style="width: 34px; height: 34px; border-radius: 9px; font-size: 0.95rem; background: linear-gradient(135deg, #ec4899, #a855f7);">
+            <i class="bi bi-star"></i>
+          </div>
+        </div>
+        <div class="dashboard-stat-num text-white">
+          {{ "%.1f"|format(metrics.rating or 5.0) }} <span class="fs-6 text-warning">★</span>
+        </div>
+        <a href="{{ url_for('reviews') }}" class="small text-decoration-none mt-2 d-inline-block fw-semibold" style="color: var(--r2s-accent-violet);">See reviews &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       3. Main Content: 2-Column Balanced Responsive Grid
+       ============================================================================== -->
+  <div class="row g-4">
+    <!-- Left Column (col-lg-8): Primary Activity Streams -->
+    <div class="col-12 col-lg-8">
+
+      <!-- Section A: Active Rentals & Due Dates -->
+      <div class="r2s-glass-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: var(--r2s-glass-border) !important;">
+          <div>
+            <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-calendar-check text-success"></i>
+              <span>Active Rentals &amp; Due Dates</span>
+              {% if active_rentals %}
+                <span class="badge-r2s badge-r2s-verified py-0 px-2">{{ active_rentals|length }}</span>
+              {% endif %}
+            </h5>
+            <p class="text-secondary small mb-0 mt-0.5">Gear you are currently renting or lending to campus peers</p>
+          </div>
+          <a href="{{ url_for('my_requests', tab='active') }}" class="btn btn-sm btn-r2s-outline">
+            View All
+          </a>
+        </div>
+
+        {% if active_rentals %}
+          <div class="row row-cols-1 row-cols-md-2 g-3">
+            {% for rent in active_rentals %}
+              <div class="col">
+                <div class="p-3 r2s-glass-card h-100 d-flex flex-column justify-content-between" style="border-color: var(--r2s-glass-border) !important;">
+                  <div>
+                    <div class="d-flex gap-3 align-items-start mb-2">
+                      <img src="{{ rent.primary_image | image_url(rent.item_category) }}" alt="{{ rent.item_title }}" class="rounded-3 border flex-shrink-0" style="width: 64px; height: 64px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                      <div class="overflow-hidden flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                          <span class="badge-r2s badge-r2s-rent py-0 px-2">{{ rent.request_type }}</span>
+                          {% if rent.display_status == 'RETURN_REQUESTED' %}
+                            <span class="badge-r2s badge-r2s-swap">
+                              <i class="bi bi-arrow-repeat me-1"></i>Return Requested
+                            </span>
+                          {% elif rent.display_status == 'OVERDUE' %}
+                            <span class="badge-r2s" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af;">
+                              <i class="bi bi-exclamation-triangle-fill me-1"></i>OVERDUE
+                            </span>
+                          {% elif rent.display_status == 'DUE SOON' %}
+                            <span class="badge-r2s badge-r2s-swap">
+                              <i class="bi bi-clock-history me-1"></i>Due in {{ rent.days_remaining }} day{{ 's' if rent.days_remaining != 1 else '' }}
+                            </span>
+                          {% else %}
+                            <span class="badge-r2s badge-r2s-verified">
+                              <i class="bi bi-check-circle me-1"></i>Active{% if rent.days_remaining is not none %} ({{ rent.days_remaining }}d left){% endif %}
+                            </span>
+                          {% endif %}
+                        </div>
+                        <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ rent.item_title }}">
+                          {{ rent.item_title }}
+                        </h6>
+                        <div class="small text-secondary lh-sm">
+                          {% if rent.renter_id == user.user_id %}
+                            From: <strong class="text-white">{{ rent.owner_name }}</strong>
+                          {% else %}
+                            To: <strong class="text-white">{{ rent.renter_name }}</strong>
+                          {% endif %}
+                          <span class="d-block text-muted mt-0.5">Due: {{ rent.due_date or 'N/A' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Action Bar -->
+                  <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between gap-2" style="border-color: var(--r2s-glass-border) !important;">
+                    <span class="fw-bold text-success small">Total: ₹{{ "{:,.0f}".format(rent.total_price) }}</span>
+                    <div class="d-flex gap-2">
+                      {% if rent.status == 'RETURN_REQUESTED' %}
+                        {% if rent.owner_id == user.user_id %}
+                          <form action="{{ url_for('confirm_return_item', request_id=rent.request_id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-2.5" title="Confirm Item Return Received">
+                              <i class="bi bi-check2-circle me-1"></i> Confirm Return
+                            </button>
+                          </form>
+                        {% else %}
+                          <span class="badge-r2s badge-r2s-swap py-1 px-2 small">Awaiting Owner</span>
+                        {% endif %}
+                      {% else %}
+                        {% if rent.renter_id == user.user_id %}
+                          <form action="{{ url_for('return_rental_item', request_id=rent.request_id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-2.5" title="Initiate Item Return">
+                              <i class="bi bi-arrow-return-left me-1"></i> Return
+                            </button>
+                          </form>
+                        {% else %}
+                          <form action="{{ url_for('confirm_return_item', request_id=rent.request_id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-2.5" title="Confirm Item Return Received">
+                              <i class="bi bi-check2-circle me-1"></i> Return Received
+                            </button>
+                          </form>
+                        {% endif %}
+                      {% endif %}
+                      <a href="{{ url_for('damage_report', request_id=rent.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Issue or Damage">
+                        <i class="bi bi-flag"></i>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-4 text-center text-secondary small">
+            <i class="bi bi-inbox fs-3 d-block mb-2 text-muted"></i>
+            No active rentals right now.
+            <div class="mt-2">
+              <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-primary">
+                <i class="bi bi-search me-1"></i> Browse Campus Marketplace
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Section A2: Confirmed Sales & Swaps (Buy/Sell & Exchange Deals) -->
+      {% if sale_swap_deals %}
+      <div class="r2s-glass-card p-4 mb-4" id="sales-swaps-section">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: var(--r2s-glass-border) !important;">
+          <div>
+            <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-bag-check text-info"></i>
+              <span>Confirmed Sales &amp; Swaps</span>
+              <span class="badge-r2s badge-r2s-verified py-0 px-2">{{ sale_swap_deals|length }}</span>
+            </h5>
+            <p class="text-secondary small mb-0 mt-0.5">Direct campus purchases and peer-to-peer swap handovers</p>
+          </div>
+          <a href="{{ url_for('my_requests', tab='active') }}" class="btn btn-sm btn-r2s-outline">
+            Manage Deals
+          </a>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+          {% for deal in sale_swap_deals %}
+            <div class="col">
+              <div class="p-3 r2s-glass-card h-100 d-flex flex-column justify-content-between" style="border-color: var(--r2s-glass-border) !important;">
+                <div>
+                  <div class="d-flex gap-3 align-items-start mb-2">
+                    <img src="{{ deal.primary_image | image_url(deal.item_category) }}" alt="{{ deal.item_title }}" class="rounded-3 border flex-shrink-0" style="width: 64px; height: 64px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                    <div class="overflow-hidden flex-grow-1">
+                      <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                        {% if deal.request_type == 'Sell' %}
+                          <span class="badge-r2s badge-r2s-sell py-0 px-2">Sale</span>
+                        {% else %}
+                          <span class="badge-r2s badge-r2s-swap py-0 px-2">Swap</span>
+                        {% endif %}
+
+                        {% if deal.status == 'COMPLETED' %}
+                          <span class="badge-r2s badge-r2s-verified">
+                            <i class="bi bi-check2-all me-1"></i>{% if deal.request_type == 'Sell' %}Sold{% else %}Exchanged{% endif %}
+                          </span>
+                        {% else %}
+                          <span class="badge-r2s badge-r2s-verified">
+                            <i class="bi bi-bag-check me-1"></i>Pending Handover
+                          </span>
+                        {% endif %}
+                      </div>
+                      <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ deal.item_title }}">
+                        <a href="{{ url_for('item_details', item_id=deal.item_id) }}" class="text-white text-decoration-none">{{ deal.item_title }}</a>
+                      </h6>
+                      <div class="small text-secondary lh-sm">
+                        {% if deal.request_type == 'Sell' %}
+                          {% if deal.renter_id == user.user_id %}
+                            Seller: <strong class="text-white">{{ deal.owner_name }}</strong>
+                          {% else %}
+                            Buyer: <strong class="text-white">{{ deal.renter_name }}</strong>
+                          {% endif %}
+                        {% else %}
+                          {% if deal.renter_id == user.user_id %}
+                            Trading with: <strong class="text-white">{{ deal.owner_name }}</strong>
+                          {% else %}
+                            Proposer: <strong class="text-white">{{ deal.renter_name }}</strong>
+                          {% endif %}
+                        {% endif %}
+                        {% if deal.offered_item_title %}
+                          <span class="d-block text-warning mt-0.5 text-truncate">Swap: {{ deal.offered_item_title }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between gap-2" style="border-color: var(--r2s-glass-border) !important;">
+                  {% if deal.request_type == 'Sell' %}
+                    <span class="fw-bold text-success small">Price: ₹{{ "{:,.0f}".format(deal.total_price or 0) }}</span>
+                  {% else %}
+                    <span class="fw-bold text-warning small">Direct Swap</span>
+                  {% endif %}
+                  <div class="d-flex gap-2">
+                    {% if deal.status in ('ACCEPTED', 'ACTIVE') %}
+                      {% if deal.request_type == 'Sell' %}
+                        <form action="{{ url_for('confirm_sale', request_id=deal.request_id) }}" method="POST" class="d-inline">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-2.5" title="Confirm Sale Handover">
+                            <i class="bi bi-bag-check me-1"></i> Confirm Handover
+                          </button>
+                        </form>
+                      {% else %}
+                        <form action="{{ url_for('confirm_exchange', request_id=deal.request_id) }}" method="POST" class="d-inline">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-sm btn-r2s-primary py-1 px-2.5" title="Confirm Swap Handover">
+                            <i class="bi bi-arrow-left-right me-1"></i> Confirm Swap
+                          </button>
+                        </form>
+                      {% endif %}
+                      <a href="{{ url_for('damage_report', request_id=deal.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2 text-danger" title="Report Condition Issue">
+                        <i class="bi bi-flag"></i>
+                      </a>
+                    {% else %}
+                      <a href="{{ url_for('write_review', rental_id=deal.request_id) }}" class="btn btn-sm btn-r2s-outline py-1 px-2.5 text-warning">
+                        <i class="bi bi-star me-1"></i> Review
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Section B: My Campus Listings -->
+      <div class="r2s-glass-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: var(--r2s-glass-border) !important;">
+          <div>
+            <h5 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-collection text-primary-light"></i>
+              <span>My Campus Listings</span>
+              <span class="badge-r2s badge-r2s-rent py-0 px-2">{{ metrics.my_total }}</span>
+            </h5>
+            <p class="text-secondary small mb-0 mt-0.5">Your published textbooks, electronics, cycles &amp; gear</p>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary">
+              <i class="bi bi-plus-circle me-1"></i> Add
+            </a>
+            <a href="{{ url_for('my_listings') }}" class="btn btn-sm btn-r2s-outline">
+              Manage All
+            </a>
+          </div>
+        </div>
+
+        {% if items %}
+          <div class="row row-cols-1 row-cols-md-2 g-3">
+            {% for it in items %}
+              <div class="col">
+                <div class="p-3 r2s-glass-card d-flex align-items-center gap-3 h-100" style="border-color: var(--r2s-glass-border) !important;">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="rounded-3 border flex-shrink-0" style="width: 60px; height: 60px; object-fit: cover; border-color: var(--r2s-glass-border) !important;" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="overflow-hidden flex-grow-1">
+                    <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                      <span class="badge-r2s {% if it.transaction_type == 'Sell' %}badge-r2s-sell{% elif it.transaction_type == 'Exchange' %}badge-r2s-swap{% else %}badge-r2s-rent{% endif %} py-0 px-1.5" style="font-size: 0.68rem;">{{ it.transaction_type }}</span>
+                      <span class="badge-r2s {% if it.status == 'Available' %}badge-r2s-verified{% else %}bg-secondary text-white{% endif %}" style="font-size: 0.68rem;">
+                        {{ it.status }}
+                      </span>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ it.title }}">
+                      <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="text-white text-decoration-none">
+                        {{ it.title }}
+                      </a>
+                    </h6>
+                    <div class="d-flex justify-content-between align-items-center small">
+                      <span class="text-success fw-bold">
+                        {% if it.transaction_type == 'Rent' %}₹{{ "{:,.0f}".format(it.rent_amount) }}/{{ it.rent_period or 'Day' }}{% elif it.transaction_type == 'Sell' %}₹{{ "{:,.0f}".format(it.price) }}{% else %}Swap{% endif %}
+                      </span>
+                      <a href="{{ url_for('edit_listing', item_id=it.item_id) }}" class="text-decoration-none fw-semibold" style="color: var(--r2s-primary-light);">
+                        <i class="bi bi-pencil-square me-1"></i>Edit
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-4 text-center text-secondary small">
+            <i class="bi bi-box-seam fs-3 d-block mb-2 text-muted"></i>
+            You haven't listed any campus gear yet.
+            <div class="mt-2">
+              <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary">
+                <i class="bi bi-plus-circle me-1"></i> Post Your First Listing
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- Right Column (col-lg-4): Quick Tools, Safety & Peer Trust -->
+    <div class="col-12 col-lg-4">
+
+      <!-- Widget 1: Campus Quick Tools -->
+      <div class="r2s-glass-card p-4 mb-4">
+        <h6 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-grid-fill text-primary-light"></i>
+          <span>Campus Quick Actions</span>
+        </h6>
+        <div class="d-flex flex-column gap-2">
+          <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary w-100 py-2 justify-content-start">
+            <i class="bi bi-plus-circle-fill me-2"></i> List New Equipment
+          </a>
+          <a href="{{ url_for('ai_matching') }}" class="btn btn-r2s-outline w-100 py-2 justify-content-start">
+            <i class="bi bi-arrow-left-right text-info me-2"></i> AI Smart Matcher
+          </a>
+          <a href="{{ url_for('ai_search') }}" class="btn btn-r2s-outline w-100 py-2 justify-content-start">
+            <i class="bi bi-stars text-warning me-2"></i> AI Semantic Search
+          </a>
+          {% if user.verification_status == 'Not Submitted' %}
+          <a href="{{ url_for('verification') }}" class="btn btn-r2s-outline w-100 py-2 justify-content-start">
+            <i class="bi bi-shield-check text-warning me-2"></i> Verify Now
+          </a>
+          {% elif user.verification_status == 'Pending' %}
+          <a href="{{ url_for('verification') }}" class="btn btn-r2s-outline w-100 py-2 justify-content-start">
+            <i class="bi bi-pencil-square text-warning me-2"></i> Edit Verification Details
+          </a>
+          {% elif user.verification_status == 'Rejected' %}
+          <a href="{{ url_for('verification') }}" class="btn btn-r2s-outline w-100 py-2 justify-content-start text-danger">
+            <i class="bi bi-arrow-repeat text-danger me-2"></i> Edit &amp; Resubmit Verification
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Widget 2: Campus Safety & Resolution Protocol -->
+      <div class="r2s-glass-card p-4 mb-4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="r2s-brand-logo-icon flex-shrink-0" style="background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; width: 44px; height: 44px;">
+            <i class="bi bi-shield-check fs-5"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold text-white mb-1">Campus Safety Protocol</h6>
+            <p class="text-secondary small mb-2 lh-sm">
+              All peer rentals follow our student care guidelines. Handover and inspection take place publicly on campus (library, student center, canteen).
+            </p>
+            <div class="small text-muted">
+              <i class="bi bi-check-circle-fill text-success me-1"></i> Zero arbitrary owner penalties
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Widget 3: Peer Trust Score & Reviews -->
+      <div class="r2s-glass-card p-4">
+        <h6 class="fw-bold text-white mb-2 d-flex align-items-center gap-2">
+          <i class="bi bi-star-fill text-warning"></i>
+          <span>Peer Trust &amp; Reviews</span>
+        </h6>
+        <p class="text-secondary small mb-3">
+          Earn higher trust rankings on campus by returning rentals on time and maintaining gear in great condition.
+        </p>
+        <div class="p-3 rounded-3 text-center mb-3" style="background: rgba(124, 58, 237, 0.08); border: 1px solid var(--r2s-glass-border);">
+          <div class="display-6 fw-bold text-white mb-0">
+            {{ "%.1f"|format(metrics.rating or 5.0) }} <span class="fs-4 text-warning">★</span>
+          </div>
+          <span class="small text-muted">Based on peer completed exchanges</span>
+        </div>
+        <a href="{{ url_for('reviews') }}" class="btn btn-sm btn-r2s-outline w-100">
+          <i class="bi bi-chat-left-text me-1"></i> View All Reviews &amp; Ratings
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

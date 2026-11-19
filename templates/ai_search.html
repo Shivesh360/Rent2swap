@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}AI Smart Search - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-3" id="ai-search-page">
+
+  <!-- Hero AI Search Header -->
+  <div class="text-center mx-auto mb-4" style="max-width: 760px;">
+    <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill mb-2" style="background: rgba(124, 58, 237, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #d8b4fe; font-size: 0.85rem;">
+      <i class="bi bi-stars text-warning"></i> Powered by Gemini AI Natural Language Understanding
+    </div>
+    <h2 class="fw-bold text-white mb-2">Smart Campus <span class="r2s-gradient-text">Search</span></h2>
+    <p class="text-secondary small">
+      Search naturally in plain student language. Describe your semester project, budget, duration, or exchange gear.
+    </p>
+
+    <!-- Search Input Form -->
+    <form action="{{ url_for('ai_search') }}" method="GET" class="mt-3 position-relative" id="ai-search-form">
+      <div class="r2s-search-box p-1.5 d-flex align-items-center gap-2">
+        <i class="bi bi-magic fs-5 ms-3 text-warning"></i>
+        <input type="text" name="q" id="ai-query-input" class="form-control bg-transparent border-0 text-white shadow-none ps-1" placeholder="e.g. I need a cycle for 2 months under ₹1000 near campus..." value="{{ query or '' }}" required autofocus>
+        <button type="submit" class="btn btn-r2s-primary px-4 py-2" id="ai-search-btn">
+          <i class="bi bi-stars me-1"></i> Ask AI
+        </button>
+      </div>
+    </form>
+
+    <!-- Interactive Example Query Chips -->
+    <div class="d-flex gap-2 justify-content-center flex-wrap mt-3 small" id="ai-chips">
+      <span class="text-secondary" style="font-size: 0.78rem;">Try asking:</span>
+      <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2.5 rounded-pill text-secondary" style="font-size: 0.78rem;" onclick="setQuery('I need a cycle for 2 months under ₹1000 near campus')">
+        🚲 Cycle under ₹1000
+      </button>
+      <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2.5 rounded-pill text-secondary" style="font-size: 0.78rem;" onclick="setQuery('Camera with lens for weekend shoot under ₹1500')">
+        📷 Camera for weekend
+      </button>
+      <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2.5 rounded-pill text-secondary" style="font-size: 0.78rem;" onclick="setQuery('MacBook or gaming laptop for semester project')">
+        💻 MacBook / Laptop
+      </button>
+      <button type="button" class="btn btn-sm btn-r2s-outline py-0.5 px-2.5 rounded-pill text-secondary" style="font-size: 0.78rem;" onclick="setQuery('Looking to swap guitar or headphones')">
+        🎧 Swap headphones / guitar
+      </button>
+    </div>
+  </div>
+
+  {% if is_searched %}
+    <!-- "Here's what I understood" Card -->
+    {% if understanding %}
+      <div class="r2s-panel-box p-4 mb-4 mx-auto" style="max-width: 900px;">
+        <div class="d-flex align-items-start gap-3">
+          <div class="r2s-brand-logo-icon flex-shrink-0" style="width: 44px; height: 44px; border-radius: 12px; font-size: 1.2rem; background: linear-gradient(135deg, #7c3aed, #ec4899);">
+            <i class="bi bi-lightbulb-fill text-warning"></i>
+          </div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+              <h6 class="fw-bold text-white mb-0">Here's what Gemini understood:</h6>
+              <span class="badge-r2s badge-r2s-verified" style="font-size: 0.72rem;">
+                <i class="bi bi-check2-all me-1"></i>Structured Intent Extracted
+              </span>
+            </div>
+            <p class="text-white small mb-2 fw-semibold">"{{ understanding.understanding_summary }}"</p>
+
+            <!-- Parsed Badges Bar -->
+            <div class="d-flex gap-2 flex-wrap">
+              {% if understanding.category %}
+                <span class="badge-r2s badge-r2s-rent py-0.5 px-2.5">
+                  <i class="bi bi-tag-fill me-1"></i>Category: {{ understanding.category }}
+                </span>
+              {% endif %}
+              {% if understanding.transaction_type %}
+                <span class="badge-r2s badge-r2s-swap py-0.5 px-2.5">
+                  <i class="bi bi-arrow-left-right me-1"></i>Deal: {{ understanding.transaction_type }}
+                </span>
+              {% endif %}
+              {% if understanding.max_price %}
+                <span class="badge-r2s badge-r2s-verified py-0.5 px-2.5">
+                  <i class="bi bi-cash-stack me-1"></i>Max Budget: ₹{{ "{:,.0f}".format(understanding.max_price) }}
+                </span>
+              {% endif %}
+              <a href="{{ url_for('marketplace') }}" class="small text-secondary text-decoration-none ms-auto align-self-center">
+                Switch to standard catalog filters &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Matching Results Section -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold text-white mb-0">Matching Campus Listings ({{ items|length }})</h5>
+        <p class="text-secondary small mb-0">Filtered in real-time from active Supabase PostgreSQL marketplace listings.</p>
+      </div>
+      <a href="{{ url_for('ai_search') }}" class="btn btn-sm btn-r2s-outline">Clear Search</a>
+    </div>
+
+    {% if items %}
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3 mb-4">
+        {% for it in items %}
+          <div class="col">
+            <div class="r2s-listing-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <!-- Top Image -->
+                <div class="position-relative overflow-hidden" style="height: 180px;">
+                  <img src="{{ it.primary_image | image_url(it.category) }}" alt="{{ it.title }}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';">
+                  <div class="position-absolute top-0 start-0 m-2">
+                    <span class="badge-r2s badge-r2s-rent">{{ it.transaction_type }}</span>
+                  </div>
+                  <div class="position-absolute top-0 end-0 m-2">
+                    <span class="badge-r2s badge-r2s-verified"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>
+                  </div>
+                </div>
+
+                <!-- Content -->
+                <div class="p-3">
+                  <!-- AI Match Explanation Pill -->
+                  <div class="mb-2 p-1.5 px-2 rounded-2 small" style="background: rgba(124, 58, 237, 0.18); border: 1px solid rgba(168, 85, 247, 0.35); font-size: 0.72rem; color: #d8b4fe;">
+                    <i class="bi bi-stars text-warning me-1"></i>{{ it.ai_reason or 'Matches your query criteria' }}
+                  </div>
+
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ it.title }}">{{ it.title }}</h6>
+                  <p class="text-secondary small mb-2 text-truncate" style="font-size: 0.78rem;">{{ it.description }}</p>
+
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      {% if it.transaction_type == 'Rent' %}
+                        <span class="fw-bold text-success">₹{{ "{:,.0f}".format(it.rent_amount) }}</span>
+                        <span class="text-secondary small">/ {{ it.rent_period or 'Day' }}</span>
+                      {% elif it.transaction_type == 'Sell' %}
+                        <span class="fw-bold text-white">₹{{ "{:,.0f}".format(it.price) }}</span>
+                      {% else %}
+                        <span class="badge-r2s badge-r2s-swap py-0 px-2">Swap Barter</span>
+                      {% endif %}
+                    </div>
+                    <span class="small text-secondary"><i class="bi bi-geo-alt text-danger me-1"></i>{{ it.city }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card Footer Action -->
+              <div class="p-3 pt-0 border-0">
+                <a href="{{ url_for('item_details', item_id=it.item_id) }}" class="btn btn-sm btn-r2s-primary w-100">
+                  View Item &amp; Request &rarr;
+                </a>
+              </div>
+
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- Empty State -->
+      <div class="r2s-glass-card p-5 text-center my-4 mx-auto" style="max-width: 640px;">
+        <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 54px; height: 54px; border-radius: 14px; font-size: 1.4rem;">
+          <i class="bi bi-search"></i>
+        </div>
+        <h5 class="fw-bold text-white mb-2">No matching listings found</h5>
+        <p class="text-secondary small mb-3">
+          We understood you're looking for <strong>{{ understanding.understanding_summary if understanding else 'this item' }}</strong>, but there are no current listings matching those exact constraints.
+        </p>
+        <div class="d-flex gap-2 justify-content-center">
+          <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline px-4">
+            Browse All Marketplace Gear
+          </a>
+          <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary px-4">
+            Post a Listing Request
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <!-- Cold Start / Welcome Info Cards -->
+    <div class="row g-3 mx-auto mt-2" style="max-width: 900px;">
+      <div class="col-md-4">
+        <div class="r2s-glass-card p-3.5 h-100 text-center">
+          <div class="r2s-brand-logo-icon mx-auto mb-2" style="width: 40px; height: 40px; border-radius: 10px; font-size: 1rem;">
+            <i class="bi bi-chat-left-dots-fill"></i>
+          </div>
+          <h6 class="fw-bold text-white mb-1">Natural Queries</h6>
+          <p class="text-secondary small mb-0" style="font-size: 0.78rem;">
+            No need for exact keywords. Type how you talk to campus classmates.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="r2s-glass-card p-3.5 h-100 text-center">
+          <div class="r2s-brand-logo-icon mx-auto mb-2" style="width: 40px; height: 40px; border-radius: 10px; font-size: 1rem; background: linear-gradient(135deg, #10b981, #06b6d4);">
+            <i class="bi bi-calculator-fill"></i>
+          </div>
+          <h6 class="fw-bold text-white mb-1">Budget Extraction</h6>
+          <p class="text-secondary small mb-0" style="font-size: 0.78rem;">
+            AI parses constraints like "under 500", "for 1 week", or "near Indiranagar".
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="r2s-glass-card p-3.5 h-100 text-center">
+          <div class="r2s-brand-logo-icon mx-auto mb-2" style="width: 40px; height: 40px; border-radius: 10px; font-size: 1rem; background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+            <i class="bi bi-database-check"></i>
+          </div>
+          <h6 class="fw-bold text-white mb-1">Real Database Results</h6>
+          <p class="text-secondary small mb-0" style="font-size: 0.78rem;">
+            Zero hallucinated listings. Every match corresponds to live items in PostgreSQL.
+          </p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+function setQuery(text) {
+  const input = document.getElementById('ai-query-input');
+  if (input) {
+    input.value = text;
+    document.getElementById('ai-search-form').submit();
+  }
+}
+</script>
+{% endblock %}

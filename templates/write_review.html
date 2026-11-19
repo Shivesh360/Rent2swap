@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Write Review - {{ rental.item_title }} | Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="write-review-page" style="max-width: 720px;">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <a href="{{ url_for('reviews') }}" class="btn btn-sm btn-link text-decoration-none ps-0 text-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Reviews
+    </a>
+    <h2 class="fw-bold text-white mb-1">Write a Peer <span class="r2s-gradient-text">Review</span></h2>
+    <p class="text-secondary small">
+      Your authentic feedback strengthens the verified student trust network on campus.
+    </p>
+  </div>
+
+  <!-- Transaction Card -->
+  <div class="r2s-glass-card p-4 mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <div class="r2s-brand-logo-icon" style="width: 50px; height: 50px; border-radius: 14px; font-size: 1.4rem;">
+        <i class="bi bi-star-fill text-warning"></i>
+      </div>
+      <div>
+        <span class="badge-r2s badge-r2s-verified mb-1">Completed Transaction</span>
+        <h5 class="fw-bold text-white mb-1">{{ rental.item_title }}</h5>
+        <div class="small text-secondary">
+          Reviewing: <strong class="text-white">{{ target_name }}</strong> ({{ role_label }})
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Form -->
+  <div class="r2s-glass-card p-4 p-md-5">
+    <form action="{{ url_for('write_review', rental_id=rental.request_id) }}" method="POST" id="write-review-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <!-- Rating (1 to 5) -->
+      <div class="mb-4 text-center">
+        <label class="form-label text-white fw-bold d-block mb-2">Overall Peer Rating <span class="text-danger">*</span></label>
+        <div class="d-inline-flex gap-2 p-2 auth-tab-switcher" id="star-rating-group">
+          {% for score in [1, 2, 3, 4, 5] %}
+            <input type="radio" class="btn-check" name="rating" id="rating-{{ score }}" value="{{ score }}" {% if score == 5 %}checked{% endif %}>
+            <label class="btn btn-sm btn-outline-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;" for="rating-{{ score }}" title="{{ score }} Star{{ 's' if score != 1 else '' }}">
+              <span class="fw-bold fs-6">{{ score }}★</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Comment -->
+      <div class="mb-4">
+        <label for="review-comment" class="form-label text-white fw-bold">Feedback &amp; Experience Comment</label>
+        <textarea name="comment" id="review-comment" rows="4" class="form-control r2s-input" placeholder="How was the item condition, communication, handover punctuality, and return process?" required minlength="10"></textarea>
+        <div class="form-text small text-muted">Constructive, respectful reviews help fellow students make informed rental decisions.</div>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+        <a href="{{ url_for('reviews') }}" class="btn btn-r2s-outline px-4">Cancel</a>
+        <button type="submit" class="btn btn-r2s-primary px-5" id="publish-review-btn">
+          <i class="bi bi-check2-circle me-1"></i> Publish Review
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

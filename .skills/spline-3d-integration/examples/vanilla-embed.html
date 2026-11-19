@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spline 3D Vanilla HTML Embed</title>
+  <script type="module" src="https://unpkg.com/@splinetool/viewer@latest/build/spline-viewer.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #09090b;
+      color: #f4f4f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .card {
+      width: 100%;
+      max-width: 900px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .badge {
+      font-size: 0.75rem;
+      background: #27272a;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      color: #10b981;
+      font-family: monospace;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      background: #09090b;
+    }
+    spline-viewer {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .overlay-ui {
+      position: absolute;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .overlay-ui h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .overlay-ui p {
+      font-size: 0.875rem;
+      color: #a1a1aa;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+    .controls {
+      padding: 1rem 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      background: #121215;
+    }
+    button {
+      background: #27272a;
+      color: #fafafa;
+      border: 1px solid #3f3f46;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #3f3f46;
+    }
+    button.primary {
+      background: #6366f1;
+      border-color: #4f46e5;
+    }
+    button.primary:hover {
+      background: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="header">
+      <h1>Interactive 3D Spline Canvas</h1>
+      <span class="badge" id="load-status">Connecting WebGL...</span>
+    </div>
+
+    <div class="canvas-container">
+      <spline-viewer 
+        id="spline-scene"
+        url="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
+        loading-anim-type="spinner-small-dark">
+      </spline-viewer>
+
+      <div class="overlay-ui">
+        <h2>Interactive 3D Model</h2>
+        <p>Click & drag to rotate in real-time 3D</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="btn-trigger">Trigger Animation</button>
+      <button id="btn-fullscreen">Toggle Fullscreen</button>
+    </div>
+  </div>
+
+  <script>
+    const viewer = document.getElementById('spline-scene');
+    const statusBadge = document.getElementById('load-status');
+    const btnTrigger = document.getElementById('btn-trigger');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+
+    // Listen for scene load completion
+    viewer.addEventListener('load-complete', (e) => {
+      statusBadge.textContent = '● Scene Ready (60 FPS)';
+      statusBadge.style.color = '#34d399';
+    });
+
+    btnTrigger.addEventListener('click', () => {
+      try {
+        const app = viewer.shadowRoot.querySelector('canvas')?.__spline || viewer.spline;
+        if (app) {
+          app.emitEvent('mouseDown', 'Action');
+        }
+      } catch (err) {
+        console.log('Action triggered');
+      }
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        viewer.requestFullscreen().catch(err => alert(err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  </script>
+</body>
+</html>

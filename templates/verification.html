@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}Student Verification - Rent2Swap Campus Marketplace{% endblock %}
+
+{% block content %}
+<div class="container py-2" id="verification-page" style="max-width: 860px;">
+
+  <!-- Header -->
+  <div class="mb-4">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-link text-decoration-none ps-0 text-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </a>
+    <h2 class="fw-bold text-white mb-1">Student <span class="r2s-gradient-text">Verification</span></h2>
+    <p class="text-secondary small">
+      Verify your college enrollment to unlock trusted peer-to-peer campus rentals, zero deposit holds, and direct item swaps.
+    </p>
+  </div>
+
+  <!-- Verification Status Hero Card -->
+  <div class="r2s-glass-card p-4 mb-4 position-relative overflow-hidden">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="r2s-brand-logo-icon" style="width: 54px; height: 54px; border-radius: 16px; font-size: 1.5rem; {% if user.verification_status == 'Verified' %}background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff;{% elif user.verification_status == 'Pending' %}background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;{% elif user.verification_status == 'Rejected' %}background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff;{% else %}background: linear-gradient(135deg, #7c3aed, #a855f7);{% endif %}">
+          {% if user.verification_status == 'Verified' %}
+            <i class="bi bi-patch-check-fill"></i>
+          {% elif user.verification_status == 'Pending' %}
+            <i class="bi bi-hourglass-split"></i>
+          {% elif user.verification_status == 'Rejected' %}
+            <i class="bi bi-x-circle-fill"></i>
+          {% else %}
+            <i class="bi bi-shield-lock"></i>
+          {% endif %}
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h5 class="fw-bold text-white mb-0">{{ user.name }}</h5>
+            {% if user.verification_status == 'Verified' %}
+              <span class="badge-r2s badge-r2s-verified"><i class="bi bi-check-circle-fill me-1"></i>Verified Student</span>
+            {% elif user.verification_status == 'Pending' %}
+              <span class="badge-r2s badge-r2s-swap" style="background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d;"><i class="bi bi-clock-history me-1"></i>Pending</span>
+            {% elif user.verification_status == 'Rejected' %}
+              <span class="badge-r2s" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+            {% else %}
+              <span class="badge-r2s" style="background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.4); color: #cbd5e1;"><i class="bi bi-shield-exclamation me-1"></i>Not Submitted</span>
+            {% endif %}
+          </div>
+          <div class="small text-secondary mt-1">
+            <span><i class="bi bi-building me-1"></i>{{ user.college or 'College Affiliation Pending' }}</span> &bull; 
+            <span><i class="bi bi-envelope me-1"></i>{{ user.email }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-md-end">
+        <span class="badge-r2s" style="background: rgba(124, 58, 237, 0.25); color: #d8b4fe; font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+          <i class="bi bi-shield-check me-1"></i>Private Encrypted Review
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification Status Alerts -->
+  {% if user.verification_status == 'Pending' %}
+    <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-start gap-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35) !important;">
+      <i class="bi bi-clock-history fs-3 text-warning flex-shrink-0"></i>
+      <div>
+        <strong class="text-white d-block">Your verification request is under review.</strong>
+        <span class="text-white-50 small d-block">An authorized campus administrator will inspect your College ID Front and Back images and enrollment details shortly.</span>
+        {% if user.verification_submitted_at or user.verification_resubmitted_at %}
+          <span class="text-warning small d-block mt-1">
+            <i class="bi bi-calendar-event me-1"></i>
+            Submitted: {{ (user.verification_submitted_at or '')[:16] }}
+            {% if user.verification_resubmitted_at %} &bull; Last Updated: {{ user.verification_resubmitted_at[:16] }}{% endif %}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  {% elif user.verification_status == 'Rejected' %}
+    <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-start gap-3" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35) !important;">
+      <i class="bi bi-exclamation-octagon-fill fs-3 text-danger flex-shrink-0 mt-1"></i>
+      <div>
+        <strong class="text-white d-block">Verification Request Rejected by Admin</strong>
+        <p class="text-white-50 small mb-2">
+          <strong class="text-danger">Reason:</strong> {{ user.verification_rejection_reason or 'The uploaded student ID document or college details could not be validated.' }}
+        </p>
+        <span class="text-white-50 small">Please correct your details or upload clearer College ID Front and Back images below, then click <strong>Edit &amp; Resubmit</strong>.</span>
+      </div>
+    </div>
+  {% elif user.verification_status == 'Verified' %}
+    <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-start gap-3" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35) !important;">
+      <i class="bi bi-patch-check-fill fs-3 text-success flex-shrink-0"></i>
+      <div>
+        <strong class="text-white d-block">Verified Student Account</strong>
+        <span class="text-white-50 small d-block">Your student identity has been approved by campus administrators. You can post listings, rent, buy, and swap across the marketplace.</span>
+        <span class="text-success small d-block mt-1">
+          <i class="bi bi-info-circle me-1"></i>Updating course, year, or phone keeps your Verified status. Changing College Name, Enrollment Number, or ID images triggers admin re-verification.
+        </span>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-start gap-3" style="background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(168, 85, 247, 0.35) !important;">
+      <i class="bi bi-shield-plus fs-3 text-primary-light flex-shrink-0"></i>
+      <div>
+        <strong class="text-white d-block">Submit Your College ID Front &amp; Back Images</strong>
+        <span class="text-secondary small">Complete the form below and upload both sides of your official student ID card to unlock full Rent2Swap privileges.</span>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Verification Progress Flow (Stitch Step Tracker) -->
+  <div class="r2s-glass-card p-4 mb-4">
+    <h6 class="fw-bold text-white mb-3">Verification Progress</h6>
+    <div class="row g-2 text-center small">
+      <!-- Step 1 -->
+      <div class="col">
+        <div class="p-2 rounded-3 border" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.35) !important;">
+          <i class="bi bi-check-circle-fill text-success d-block fs-5 mb-1"></i>
+          <span class="fw-bold text-white d-block">1. Account</span>
+          <span class="text-secondary" style="font-size: 0.72rem;">Created</span>
+        </div>
+      </div>
+      <!-- Step 2 -->
+      <div class="col">
+        <div class="p-2 rounded-3 border" style="background: {% if user.college and user.college != 'General User' and user.college != 'General Student' %}rgba(16, 185, 129, 0.12){% else %}rgba(124, 58, 237, 0.15){% endif %}; border-color: rgba(168, 85, 247, 0.3) !important;">
+          <i class="bi {% if user.college and user.college != 'General User' and user.college != 'General Student' %}bi-check-circle-fill text-success{% else %}bi-building text-warning{% endif %} d-block fs-5 mb-1"></i>
+          <span class="fw-bold text-white d-block">2. College</span>
+          <span class="text-secondary" style="font-size: 0.72rem;">Details</span>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="col">
+        <div class="p-2 rounded-3 border" style="background: {% if user.enrollment_no %}rgba(16, 185, 129, 0.12){% else %}rgba(124, 58, 237, 0.15){% endif %}; border-color: rgba(168, 85, 247, 0.3) !important;">
+          <i class="bi {% if user.enrollment_no %}bi-check-circle-fill text-success{% else %}bi-person-badge text-warning{% endif %} d-block fs-5 mb-1"></i>
+          <span class="fw-bold text-white d-block">3. Student ID</span>
+          <span class="text-secondary" style="font-size: 0.72rem;">Roll / Enrollment</span>
+        </div>
+      </div>
+      <!-- Step 4 -->
+      <div class="col">
+        <div class="p-2 rounded-3 border" style="background: {% if user.phone %}rgba(16, 185, 129, 0.12){% else %}rgba(124, 58, 237, 0.15){% endif %}; border-color: rgba(168, 85, 247, 0.3) !important;">
+          <i class="bi {% if user.phone %}bi-check-circle-fill text-success{% else %}bi-telephone text-secondary{% endif %} d-block fs-5 mb-1"></i>
+          <span class="fw-bold text-white d-block">4. Contact</span>
+          <span class="text-secondary" style="font-size: 0.72rem;">Coordination</span>
+        </div>
+      </div>
+      <!-- Step 5 -->
+      <div class="col">
+        <div class="p-2 rounded-3 border" style="background: {% if user.verification_status == 'Verified' %}rgba(16, 185, 129, 0.18){% elif user.verification_status == 'Pending' %}rgba(245, 158, 11, 0.18){% elif user.verification_status == 'Rejected' %}rgba(239, 68, 68, 0.18){% else %}var(--r2s-card-panel-bg){% endif %}; border-color: {% if user.verification_status == 'Verified' %}rgba(16, 185, 129, 0.4){% elif user.verification_status == 'Pending' %}rgba(245, 158, 11, 0.4){% elif user.verification_status == 'Rejected' %}rgba(239, 68, 68, 0.4){% else %}var(--r2s-glass-border){% endif %} !important;">
+          <i class="bi {% if user.verification_status == 'Verified' %}bi-patch-check-fill text-success{% elif user.verification_status == 'Pending' %}bi-hourglass-split text-warning{% elif user.verification_status == 'Rejected' %}bi-x-circle-fill text-danger{% else %}bi-shield text-muted{% endif %} d-block fs-5 mb-1"></i>
+          <span class="fw-bold text-white d-block">5. {% if user.verification_status == 'Verified' %}Verified{% elif user.verification_status == 'Pending' %}Pending{% elif user.verification_status == 'Rejected' %}Rejected{% else %}Approval{% endif %}</span>
+          <span class="text-secondary" style="font-size: 0.72rem;">{% if user.verification_status == 'Verified' %}Campus Badge{% elif user.verification_status == 'Pending' %}In Review{% elif user.verification_status == 'Rejected' %}Action Required{% else %}Admin Review{% endif %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification Form -->
+  <div class="r2s-glass-card p-4 p-md-5">
+    <h5 class="fw-bold text-white mb-3 pb-2 border-bottom d-flex align-items-center gap-2" style="border-color: rgba(168, 85, 247, 0.2) !important;">
+      <i class="bi bi-person-vcard text-primary-light"></i>
+      <span>College Academic Information</span>
+    </h5>
+
+    <form action="{{ url_for('verification') }}" method="POST" enctype="multipart/form-data" id="verification-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3 mb-3">
+        <!-- College Name -->
+        <div class="col-md-6">
+          <label for="verif-college" class="form-label">College / University Name <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-building"></i></span>
+            <input type="text" name="college" id="verif-college" class="form-control r2s-input border-start-0" placeholder="e.g. BCA Apex University, IIT, DU" value="{{ user.college if user.college and user.college not in ('General User', 'General Student') else '' }}" required>
+          </div>
+        </div>
+
+        <!-- Course / Branch -->
+        <div class="col-md-6">
+          <label for="verif-branch" class="form-label">Course / Branch / Degree <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-mortarboard"></i></span>
+            <input type="text" name="branch" id="verif-branch" class="form-control r2s-input border-start-0" placeholder="e.g. Computer Science, Mechanical Engg, B.Com" value="{{ user.course or user.branch or '' }}" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <!-- Academic Year / Semester -->
+        <div class="col-md-6">
+          <label for="verif-year" class="form-label">Current Year / Semester</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-calendar3"></i></span>
+            <input type="text" name="year" id="verif-year" class="form-control r2s-input border-start-0" placeholder="e.g. 2nd Year / 4th Sem" value="{{ user.year if user.year and user.year != 'N/A' else '' }}">
+          </div>
+        </div>
+
+        <!-- Student Roll / Enrollment Number -->
+        <div class="col-md-6">
+          <label for="verif-enrollment" class="form-label">Enrollment / Roll Number <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-hash"></i></span>
+            <input type="text" name="enrollment_no" id="verif-enrollment" class="form-control r2s-input border-start-0" placeholder="e.g. 21BCA048" value="{{ user.enrollment_no or '' }}" required>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile / Contact Number -->
+      <div class="mb-4">
+        <label for="verif-phone" class="form-label">Mobile Contact Number (for campus handover alerts)</label>
+        <div class="input-group">
+          <span class="input-group-text bg-transparent text-secondary border-end-0" style="border-color: var(--r2s-glass-border);"><i class="bi bi-telephone"></i></span>
+          <input type="tel" name="phone" id="verif-phone" class="form-control r2s-input border-start-0" placeholder="e.g. +91 98765 43210" value="{{ user.phone or '' }}">
+        </div>
+        <div class="form-text small text-muted">Used privately for urgent rental returns and handover updates.</div>
+      </div>
+
+      <!-- Dual Student ID Card Upload (Front and Back) -->
+      <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label text-white fw-bold mb-0">
+            <i class="bi bi-person-vcard text-primary-light me-1"></i> College ID Card Documents <span class="text-danger">*</span>
+          </label>
+          <span class="small text-secondary">Front &amp; Back required</span>
+        </div>
+        <p class="text-secondary small mb-3">
+          Upload clear, high-resolution photos or scans of both sides of your official college student ID card.
+        </p>
+
+        <div class="row g-3">
+          <!-- Front Side -->
+          <div class="col-md-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-between" style="background: rgba(124, 58, 237, 0.08); border: 1px dashed rgba(168, 85, 247, 0.4);">
+              <div>
+                <label for="verif-id-card-front" class="form-label text-white fw-semibold small d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-file-earmark-person me-1 text-primary"></i> College ID Front <span class="text-danger">*</span></span>
+                  {% if user.id_card_front_image or user.college_id_front_path or user.id_card_image %}
+                    <span class="badge bg-success-subtle text-success small px-2 py-0.5 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Uploaded</span>
+                  {% endif %}
+                </label>
+                <input type="file" name="id_card_front" id="verif-id-card-front" class="form-control r2s-input mb-2" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                <div class="form-text small text-secondary">Front side with student photo, name &amp; enrollment number.</div>
+              </div>
+
+              <!-- Front Preview Area -->
+              <div class="mt-3 text-center p-2 rounded-2 bg-dark bg-opacity-50 border border-secondary border-opacity-25" id="front-preview-container" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                {% set front_img = user.id_card_front_image or user.college_id_front_path or user.id_card_image %}
+                {% if front_img %}
+                  {% if front_img.endswith('.pdf') %}
+                    <a href="{{ front_img | image_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-r2s-outline d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
+                      <span>View College ID Front (PDF)</span>
+                      <i class="bi bi-box-arrow-up-right small"></i>
+                    </a>
+                  {% else %}
+                    <a href="{{ front_img | image_url }}" target="_blank" rel="noopener" class="d-inline-block position-relative" title="Click to view full size">
+                      <img src="{{ front_img | image_url }}" id="front-preview-img" alt="College ID Front" class="rounded border" style="max-height: 110px; max-width: 100%; object-fit: contain; border-color: rgba(168, 85, 247, 0.3) !important;" data-missing-fallback="1">
+                      <div class="small text-secondary mt-1"><i class="bi bi-zoom-in me-1"></i>College ID Front (click to zoom)</div>
+                    </a>
+                  {% endif %}
+                {% else %}
+                  <div class="text-muted small" id="front-placeholder">
+                    <i class="bi bi-image fs-3 d-block mb-1 text-secondary opacity-50"></i>
+                    No College ID Front selected yet
+                  </div>
+                  <img id="front-preview-img" alt="College ID Front" class="rounded border d-none" style="max-height: 110px; max-width: 100%; object-fit: contain;">
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Back Side -->
+          <div class="col-md-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column justify-content-between" style="background: rgba(124, 58, 237, 0.08); border: 1px dashed rgba(168, 85, 247, 0.4);">
+              <div>
+                <label for="verif-id-card-back" class="form-label text-white fw-semibold small d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-file-earmark-text me-1 text-primary"></i> College ID Back <span class="text-danger">*</span></span>
+                  {% if user.id_card_back_image or user.college_id_back_path %}
+                    <span class="badge bg-success-subtle text-success small px-2 py-0.5 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Uploaded</span>
+                  {% endif %}
+                </label>
+                <input type="file" name="id_card_back" id="verif-id-card-back" class="form-control r2s-input mb-2" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                <div class="form-text small text-secondary">Back side with college address, semester validity &amp; barcode.</div>
+              </div>
+
+              <!-- Back Preview Area -->
+              <div class="mt-3 text-center p-2 rounded-2 bg-dark bg-opacity-50 border border-secondary border-opacity-25" id="back-preview-container" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                {% set back_img = user.id_card_back_image or user.college_id_back_path %}
+                {% if back_img %}
+                  {% if back_img.endswith('.pdf') %}
+                    <a href="{{ back_img | image_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-r2s-outline d-inline-flex align-items-center gap-2">
+                      <i class="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
+                      <span>View College ID Back (PDF)</span>
+                      <i class="bi bi-box-arrow-up-right small"></i>
+                    </a>
+                  {% else %}
+                    <a href="{{ back_img | image_url }}" target="_blank" rel="noopener" class="d-inline-block position-relative" title="Click to view full size">
+                      <img src="{{ back_img | image_url }}" id="back-preview-img" alt="College ID Back" class="rounded border" style="max-height: 110px; max-width: 100%; object-fit: contain; border-color: rgba(168, 85, 247, 0.3) !important;" data-missing-fallback="1">
+                      <div class="small text-secondary mt-1"><i class="bi bi-zoom-in me-1"></i>College ID Back (click to zoom)</div>
+                    </a>
+                  {% endif %}
+                {% else %}
+                  <div class="text-muted small" id="back-placeholder">
+                    <i class="bi bi-image fs-3 d-block mb-1 text-secondary opacity-50"></i>
+                    No College ID Back selected yet
+                  </div>
+                  <img id="back-preview-img" alt="College ID Back" class="rounded border d-none" style="max-height: 110px; max-width: 100%; object-fit: contain;">
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strict Privacy Notice Box -->
+      <div class="p-3 r2s-panel-box mb-4" style="border-color: rgba(16, 185, 129, 0.35) !important;">
+        <div class="d-flex align-items-start gap-2">
+          <i class="bi bi-shield-lock-fill text-success fs-5 mt-0.5"></i>
+          <div>
+            <strong class="text-white small d-block mb-1">Strict Privacy &amp; Data Protection Guarantee</strong>
+            <p class="text-secondary small mb-0 lh-sm">
+              Your college ID cards (front &amp; back), enrollment roll number, phone number, and residential details are encrypted and kept strictly confidential. They are <strong>NEVER</strong> visible on public marketplace listings or shared with other peers. Only authorized campus administrators can review your verification documents.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Controls -->
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: rgba(168, 85, 247, 0.15) !important;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-r2s-outline px-4">Cancel</a>
+        <button type="submit" class="btn btn-r2s-primary px-5" id="submit-verification-btn">
+          <i class="bi bi-shield-check me-1"></i>
+          {% if user.verification_status == 'Pending' %}
+            Edit Verification Details
+          {% elif user.verification_status == 'Rejected' %}
+            Edit &amp; Resubmit
+          {% elif user.verification_status == 'Verified' %}
+            Update Student Information
+          {% else %}
+            Submit for Verification
+          {% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Verification Audit History Timeline -->
+  {% if history %}
+  <div class="r2s-glass-card p-4 mt-4" id="verification-history-section">
+    <h6 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+      <i class="bi bi-clock-history text-primary-light"></i>
+      <span>Verification Audit History</span>
+    </h6>
+    <div class="d-flex flex-column gap-2">
+      {% for h in history %}
+      <div class="p-3 rounded-3 border small" style="background: rgba(124, 58, 237, 0.06); border-color: rgba(168, 85, 247, 0.2) !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+          <div>
+            <span class="badge-r2s py-0 px-2 me-1" style="background: rgba(124, 58, 237, 0.22); border-color: rgba(168, 85, 247, 0.4); color: #e9d5ff;">{{ h.action_type }}</span>
+            <span class="text-white fw-semibold">{{ h.previous_status or 'Not Submitted' }} &rarr; {{ h.new_status }}</span>
+          </div>
+          <span class="text-muted">{{ (h.reviewed_at or h.resubmitted_at or h.submitted_at or h.created_at or '')[:16] }}</span>
+        </div>
+        {% if h.rejection_reason %}
+          <div class="text-danger mt-1"><strong>Reason:</strong> {{ h.rejection_reason }}</div>
+        {% endif %}
+        {% if h.notes %}
+          <div class="text-secondary mt-1">{{ h.notes }}{% if h.reviewer_name %} &bull; Reviewer: {{ h.reviewer_name }}{% endif %}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Client-side preview and verification validation script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const frontInput = document.getElementById('verif-id-card-front');
+  const backInput = document.getElementById('verif-id-card-back');
+  const frontImg = document.getElementById('front-preview-img');
+  const backImg = document.getElementById('back-preview-img');
+  const frontPlaceholder = document.getElementById('front-placeholder');
+  const backPlaceholder = document.getElementById('back-placeholder');
+  const form = document.getElementById('verification-form');
+
+  const hasFrontOnFile = {{ 'true' if (user.id_card_front_image or user.college_id_front_path or user.id_card_image) else 'false' }};
+  const hasBackOnFile = {{ 'true' if (user.id_card_back_image or user.college_id_back_path) else 'false' }};
+
+  document.querySelectorAll('img[data-missing-fallback="1"]').forEach(function(img) {
+    img.addEventListener('error', function() {
+      this.classList.add('d-none');
+      const fb = this.nextElementSibling;
+      if (fb) {
+        fb.textContent = '';
+        const wrap = document.createElement('span');
+        wrap.className = 'text-warning';
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-exclamation-triangle me-1';
+        wrap.appendChild(icon);
+        wrap.appendChild(document.createTextNode('Stored file missing \u2014 please re-upload'));
+        fb.appendChild(wrap);
+      }
+    });
+  });
+
+  function setupPreview(input, imgElem, placeholderElem) {
+    if (!input || !imgElem) return;
+    input.addEventListener('change', function() {
+      const file = this.files && this.files[0];
+      if (file) {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            imgElem.src = e.target.result;
+            imgElem.classList.remove('d-none');
+            if (placeholderElem) placeholderElem.classList.add('d-none');
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+          if (placeholderElem) {
+            placeholderElem.textContent = '';
+            const pdfIcon = document.createElement('i');
+            pdfIcon.className = 'bi bi-file-earmark-pdf-fill text-danger fs-3 d-block mb-1';
+            const fileNameSpan = document.createElement('span');
+            fileNameSpan.className = 'text-white small fw-bold';
+            fileNameSpan.textContent = file.name;
+            placeholderElem.appendChild(pdfIcon);
+            placeholderElem.appendChild(fileNameSpan);
+            placeholderElem.classList.remove('d-none');
+          }
+          imgElem.classList.add('d-none');
+        }
+      }
+    });
+  }
+
+  setupPreview(frontInput, frontImg, frontPlaceholder);
+  setupPreview(backInput, backImg, backPlaceholder);
+
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const frontReady = hasFrontOnFile || (frontInput && frontInput.files && frontInput.files.length > 0);
+      const backReady = hasBackOnFile || (backInput && backInput.files && backInput.files.length > 0);
+
+      if (!frontReady || !backReady) {
+        e.preventDefault();
+        let missing = [];
+        if (!frontReady) missing.push("College ID Front Side");
+        if (!backReady) missing.push("College ID Back Side");
+        let errBox = document.getElementById('verif-client-error');
+        if (!errBox) {
+          errBox = document.createElement('div');
+          errBox.id = 'verif-client-error';
+          errBox.className = 'alert alert-warning mb-3';
+          form.prepend(errBox);
+        }
+        errBox.textContent = '';
+        const warnIcon = document.createElement('i');
+        warnIcon.className = 'bi bi-exclamation-triangle-fill me-2';
+        errBox.appendChild(warnIcon);
+        errBox.appendChild(document.createTextNode('Please upload both sides of your College ID card: '));
+        const strongEl = document.createElement('strong');
+        strongEl.textContent = missing.join(' and ');
+        errBox.appendChild(strongEl);
+        errBox.appendChild(document.createTextNode('.'));
+        errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (!frontReady && frontInput) frontInput.focus();
+        else if (!backReady && backInput) backInput.focus();
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

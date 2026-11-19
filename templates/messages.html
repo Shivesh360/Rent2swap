@@ -1,0 +1,813 @@
+{% extends "base.html" %}
+
+{% block title %}Inbox &amp; Campus Chat - Rent2Swap{% endblock %}
+
+{% block content %}
+<div class="container py-2 r2msg-page" id="inbox-page">
+
+  <!-- Page Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+    <div>
+      <h2 class="fw-bold text-white mb-1">Campus <span class="r2s-gradient-text">Inbox</span></h2>
+      <p class="text-secondary small mb-0">
+        Private 1-to-1 chat with listing owners and interested students &mdash; no personal phone numbers shared.
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-outline">
+        <i class="bi bi-grid me-1"></i> Browse Marketplace
+      </a>
+    </div>
+  </div>
+
+  <!-- Inbox + Chat Split Shell -->
+  <div class="r2msg-shell {% if initial_conversation %}is-chat-open{% endif %}" id="messaging-shell">
+
+    <!-- Left Pane: Conversations List -->
+    <aside class="r2msg-sidebar" id="inbox-sidebar" aria-label="Conversations">
+      <div class="r2msg-sidebar-header">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="fw-bold text-white d-flex align-items-center gap-2">
+            <i class="bi bi-chat-dots-fill text-purple"></i>
+            <span>Messages</span>
+          </span>
+          <span class="badge rounded-pill r2msg-unread-badge {% if (unread_messages_count or 0) == 0 %}d-none{% endif %}" id="inbox-total-unread">
+            {{ unread_messages_count or 0 }}
+          </span>
+        </div>
+        <div class="r2msg-search-wrap">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input
+            type="search"
+            id="conv-search"
+            class="r2msg-search-input"
+            placeholder="Filter by name or listing..."
+            autocomplete="off"
+          >
+        </div>
+      </div>
+
+      <div class="r2msg-conv-list" id="conversations-list">
+        {% if conversations %}
+          {% for c in conversations %}
+            {% set is_active = initial_conversation and initial_conversation.conversation_id == c.conversation_id %}
+            <button
+              type="button"
+              class="r2msg-conv-item {% if is_active %}is-active{% endif %} {% if c.unread_count > 0 %}has-unread{% endif %}"
+              data-conv-id="{{ c.conversation_id }}"
+              data-search="{{ (c.other_user_name ~ ' ' ~ c.listing_title)|lower }}"
+            >
+              <div class="r2msg-avatar">
+                <span>{{ c.other_user_initial }}</span>
+                <span class="r2msg-unread-dot {% if c.unread_count == 0 %}d-none{% endif %}"></span>
+              </div>
+              <div class="r2msg-conv-body">
+                <div class="r2msg-conv-top">
+                  <span class="r2msg-conv-name">
+                    {{ c.other_user_name }}
+                    {% if c.other_user_verified %}
+                      <i class="bi bi-patch-check-fill text-success ms-1" title="Verified Student" style="font-size: 0.72rem;"></i>
+                    {% endif %}
+                  </span>
+                  <span class="r2msg-conv-time" data-iso-time="{{ c.last_message_at }}">{{ c.last_message_at[:10] if c.last_message_at else '' }}</span>
+                </div>
+                <div class="r2msg-conv-listing">
+                  {{ c.listing_title }}
+                </div>
+                <div class="r2msg-conv-bottom">
+                  <span class="r2msg-conv-preview">{{ c.last_message_preview }}</span>
+                  <span class="r2msg-unread-badge {% if c.unread_count == 0 %}d-none{% endif %}">{{ c.unread_count }}</span>
+                </div>
+              </div>
+              <img
+                src="{{ c.listing_thumb }}"
+                alt="{{ c.listing_title }}"
+                class="r2msg-conv-thumb"
+                onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';"
+              >
+            </button>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-5 px-3" id="inbox-empty-state">
+            <div class="r2s-brand-logo-icon mx-auto mb-3" style="width: 48px; height: 48px; border-radius: 14px; font-size: 1.2rem;">
+              <i class="bi bi-chat-square-text"></i>
+            </div>
+            <h6 class="fw-bold text-white mb-1">No conversations yet</h6>
+            <p class="small text-secondary mb-3">
+              Open any Rent, Sell, or Swap listing and click <strong>Message Owner</strong> to start chatting safely.
+            </p>
+            <a href="{{ url_for('marketplace') }}" class="btn btn-sm btn-r2s-primary px-3">
+              Explore Listings
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </aside>
+
+    <!-- Right Pane: Active Chat Thread -->
+    <section class="r2msg-chat-pane" id="chat-pane" aria-label="Conversation Thread">
+
+      <!-- Empty Selection Placeholder -->
+      <div class="r2msg-placeholder {% if initial_conversation %}d-none{% endif %}" id="chat-empty-placeholder">
+        <div class="r2s-brand-logo-icon mb-3" style="width: 58px; height: 58px; border-radius: 16px; font-size: 1.4rem;">
+          <i class="bi bi-chat-heart"></i>
+        </div>
+        <h5 class="fw-bold text-white mb-1">Select a conversation</h5>
+        <p class="text-secondary small mb-0" style="max-width: 360px;">
+          Choose a thread from the left to view messages, coordinate campus handover spots, and ask item questions privately.
+        </p>
+      </div>
+
+      <!-- Active Chat Thread Container -->
+      <div class="r2msg-active-view {% if not initial_conversation %}d-none{% endif %}" id="chat-active-view">
+        <!-- Header -->
+        <div class="r2msg-chat-header">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <button
+              type="button"
+              class="btn btn-sm btn-r2s-outline d-lg-none"
+              id="mobile-back-to-inbox"
+              aria-label="Back to Inbox"
+            >
+              <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="r2msg-avatar" style="width: 38px; height: 38px; border-radius: 11px; font-size: 0.92rem;" id="chat-peer-avatar">
+              {{ initial_conversation.other_user_initial if initial_conversation else 'S' }}
+            </div>
+            <div class="overflow-hidden">
+              <div class="d-flex align-items-center gap-1 flex-wrap">
+                <strong class="text-white text-truncate" id="chat-peer-name">
+                  {{ initial_conversation.other_user_name if initial_conversation else '' }}
+                </strong>
+                <span id="chat-peer-verified" class="badge-r2s badge-r2s-verified py-0 px-2 {% if not initial_conversation or not initial_conversation.other_user_verified %}d-none{% endif %}" style="font-size: 0.65rem;">
+                  <i class="bi bi-patch-check-fill me-1"></i>Verified
+                </span>
+              </div>
+              <div class="small text-secondary" id="chat-peer-role" style="font-size: 0.74rem;">
+                {{ initial_conversation.role_label if initial_conversation else '' }}
+              </div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="small text-secondary d-none d-sm-inline" style="font-size: 0.74rem;">
+              <i class="bi bi-shield-check text-success me-1"></i>Private Campus Chat
+            </span>
+          </div>
+        </div>
+
+        <!-- Listing Context Strip -->
+        <div class="r2msg-listing-bar" id="chat-listing-bar">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <img
+              id="chat-listing-thumb"
+              src="{{ initial_conversation.listing_thumb if initial_conversation else '/static/images/placeholders/default.svg' }}"
+              alt="Listing Thumbnail"
+              class="r2msg-listing-thumb"
+              onerror="this.onerror=null; this.src='/static/images/placeholders/default.svg';"
+            >
+            <div class="min-w-0">
+              <div class="fw-bold text-white small text-truncate" id="chat-listing-title">
+                {{ initial_conversation.listing_title if initial_conversation else '' }}
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.74rem;">
+                <span class="badge-r2s badge-r2s-rent py-0 px-2" id="chat-listing-type">
+                  {{ initial_conversation.listing_type if initial_conversation else '' }}
+                </span>
+                <span class="text-secondary fw-semibold" id="chat-listing-price">
+                  {{ initial_conversation.listing_price_display if initial_conversation else '' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <a
+            href="{{ initial_conversation.listing_url if initial_conversation else '#' }}"
+            class="btn btn-sm btn-r2s-outline text-nowrap"
+            id="chat-listing-link"
+          >
+            View Listing <i class="bi bi-box-arrow-up-right ms-1"></i>
+          </a>
+        </div>
+
+        <!-- Privacy Reminder -->
+        <div class="r2msg-privacy-strip">
+          <i class="bi bi-lock-fill me-1 text-success"></i>
+          Phone numbers and personal details stay hidden. Messaging does not accept or complete transactions automatically.
+        </div>
+
+        <!-- Scrollable Message History -->
+        <div class="r2msg-messages" id="chat-messages-list">
+          <div class="text-center text-secondary small py-4 d-none" id="chat-loading-state">
+            <div class="spinner-border spinner-border-sm text-purple me-1" role="status"></div>
+            Loading conversation...
+          </div>
+          <div class="text-center text-secondary small py-5 d-none" id="chat-thread-empty">
+            <i class="bi bi-chat-left-dots fs-3 d-block mb-2 text-purple"></i>
+            No messages yet. Say hello and ask about availability or a safe campus meetup spot!
+          </div>
+        </div>
+
+        <!-- Inline Error / Retry Banner -->
+        <div class="alert alert-danger mx-3 mb-2 py-2 px-3 small d-none d-flex align-items-center justify-content-between gap-2" id="chat-error-banner" role="alert">
+          <span id="chat-error-text">Unable to deliver message. Please try again.</span>
+          <button type="button" class="btn btn-sm btn-outline-light py-0 px-2 d-none" id="chat-retry-btn">
+            Retry
+          </button>
+        </div>
+
+        <!-- Text-Only Message Composer -->
+        <form class="r2msg-composer" id="chat-send-form" autocomplete="off">
+          <div class="r2msg-composer-box">
+            <textarea
+              id="chat-message-input"
+              class="r2msg-textarea"
+              rows="1"
+              maxlength="1000"
+              placeholder="Write a message about this listing..."
+              aria-label="Message text"
+            ></textarea>
+            <button type="submit" class="btn btn-r2s-primary px-3" id="chat-send-btn" style="height: 44px;">
+              <i class="bi bi-send-fill me-1"></i>
+              <span>Send</span>
+            </button>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <span class="text-secondary" style="font-size: 0.7rem;">Press Enter to send, Shift+Enter for new line</span>
+            <span class="text-secondary" style="font-size: 0.7rem;" id="chat-char-count">0 / 1000</span>
+          </div>
+        </form>
+      </div>
+
+    </section>
+
+  </div>
+</div>
+
+<script id="r2msg-initial-data" type="application/json">
+{{ {
+  "conversations": conversations or [],
+  "initial_conversation": initial_conversation
+} | tojson }}
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  var POLL_INTERVAL_MS = 5000;
+  var MAX_LENGTH = 1000;
+
+  var shellEl = document.getElementById('messaging-shell');
+  var listEl = document.getElementById('conversations-list');
+  var searchEl = document.getElementById('conv-search');
+  var totalUnreadEl = document.getElementById('inbox-total-unread');
+  var placeholderEl = document.getElementById('chat-empty-placeholder');
+  var activeViewEl = document.getElementById('chat-active-view');
+  var backBtn = document.getElementById('mobile-back-to-inbox');
+
+  var peerAvatarEl = document.getElementById('chat-peer-avatar');
+  var peerNameEl = document.getElementById('chat-peer-name');
+  var peerVerifiedEl = document.getElementById('chat-peer-verified');
+  var peerRoleEl = document.getElementById('chat-peer-role');
+
+  var listingThumbEl = document.getElementById('chat-listing-thumb');
+  var listingTitleEl = document.getElementById('chat-listing-title');
+  var listingTypeEl = document.getElementById('chat-listing-type');
+  var listingPriceEl = document.getElementById('chat-listing-price');
+  var listingLinkEl = document.getElementById('chat-listing-link');
+
+  var messagesEl = document.getElementById('chat-messages-list');
+  var loadingEl = document.getElementById('chat-loading-state');
+  var threadEmptyEl = document.getElementById('chat-thread-empty');
+  var errorBannerEl = document.getElementById('chat-error-banner');
+  var errorTextEl = document.getElementById('chat-error-text');
+  var retryBtnEl = document.getElementById('chat-retry-btn');
+
+  var sendFormEl = document.getElementById('chat-send-form');
+  var inputEl = document.getElementById('chat-message-input');
+  var sendBtnEl = document.getElementById('chat-send-btn');
+  var charCountEl = document.getElementById('chat-char-count');
+
+  var navBadgeEl = document.getElementById('nav-inbox-badge');
+  var mobileNavBadgeEl = document.getElementById('mobile-nav-inbox-badge');
+
+  if (!shellEl || !listEl || !messagesEl || !sendFormEl || !inputEl) return;
+
+  var initialPayload = { conversations: [], initial_conversation: null };
+  try {
+    var jsonNode = document.getElementById('r2msg-initial-data');
+    if (jsonNode && jsonNode.textContent) {
+      initialPayload = JSON.parse(jsonNode.textContent);
+    }
+  } catch (e) {
+    console.warn('Could not parse initial messaging payload:', e);
+  }
+
+  var state = {
+    conversations: Array.isArray(initialPayload.conversations) ? initialPayload.conversations : [],
+    activeConvId: initialPayload.initial_conversation ? Number(initialPayload.initial_conversation.conversation_id) : null,
+    lastMessageId: 0,
+    renderedIds: new Set(),
+    pollTimer: null,
+    pollGen: 0,
+    isSending: false,
+    failedSendText: '',
+    failedClientMsgId: null
+  };
+
+  function makeClientMsgId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function formatTimestamp(isoStr) {
+    if (!isoStr) return '';
+    var normalized = String(isoStr).trim().replace(' ', 'T');
+    var parsed = new Date(normalized);
+    if (isNaN(parsed.getTime())) {
+      return String(isoStr).slice(0, 16);
+    }
+    var now = new Date();
+    var sameDay = parsed.toDateString() === now.toDateString();
+    if (sameDay) {
+      return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
+      ' ' + parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function updateGlobalUnreadBadges(totalUnread) {
+    var count = Number(totalUnread || 0);
+    [totalUnreadEl, navBadgeEl, mobileNavBadgeEl].forEach(function (badge) {
+      if (!badge) return;
+      badge.textContent = count > 99 ? '99+' : String(count);
+      if (count > 0) {
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+    });
+  }
+
+  function formatSidebarTimes() {
+    var timeNodes = listEl.querySelectorAll('[data-iso-time]');
+    timeNodes.forEach(function (node) {
+      var raw = node.getAttribute('data-iso-time');
+      if (raw) {
+        node.textContent = formatTimestamp(raw);
+      }
+    });
+  }
+
+  function showError(message, canRetry) {
+    if (!errorBannerEl || !errorTextEl || !retryBtnEl) return;
+    errorTextEl.textContent = message || 'Something went wrong. Please try again.';
+    if (canRetry) {
+      retryBtnEl.classList.remove('d-none');
+    } else {
+      retryBtnEl.classList.add('d-none');
+    }
+    errorBannerEl.classList.remove('d-none');
+  }
+
+  function hideError() {
+    if (errorBannerEl) {
+      errorBannerEl.classList.add('d-none');
+    }
+  }
+
+  function stopPolling() {
+    state.pollGen += 1;
+    if (state.pollTimer) {
+      clearTimeout(state.pollTimer);
+      state.pollTimer = null;
+    }
+  }
+
+  function scheduleNextPoll(gen) {
+    if (gen !== state.pollGen || !state.activeConvId) return;
+    if (document.visibilityState === 'hidden') return;
+    if (state.pollTimer) {
+      clearTimeout(state.pollTimer);
+    }
+    state.pollTimer = setTimeout(function () {
+      pollNewMessages(gen);
+    }, POLL_INTERVAL_MS);
+  }
+
+  function renderHeaderAndListing(conv) {
+    if (!conv) return;
+    peerAvatarEl.textContent = conv.other_user_initial || 'S';
+    peerNameEl.textContent = conv.other_user_name || 'Student';
+    peerRoleEl.textContent = conv.role_label || '';
+
+    if (conv.other_user_verified) {
+      peerVerifiedEl.classList.remove('d-none');
+    } else {
+      peerVerifiedEl.classList.add('d-none');
+    }
+
+    listingThumbEl.src = conv.listing_thumb || '/static/images/placeholders/default.svg';
+    listingTitleEl.textContent = conv.listing_title || '';
+    listingPriceEl.textContent = conv.listing_price_display || '';
+    listingLinkEl.href = conv.listing_url || '#';
+
+    var txType = conv.listing_type || 'Rent';
+    listingTypeEl.textContent = txType === 'Exchange' ? 'Swap' : txType;
+    listingTypeEl.className = 'badge-r2s py-0 px-2 ' + (
+      txType === 'Sell' ? 'badge-r2s-sell' : (txType === 'Exchange' ? 'badge-r2s-swap' : 'badge-r2s-rent')
+    );
+  }
+
+  function clearRenderedMessages() {
+    var rows = messagesEl.querySelectorAll('.r2msg-row');
+    rows.forEach(function (r) { r.remove(); });
+    state.renderedIds.clear();
+    state.lastMessageId = 0;
+  }
+
+  function appendMessages(messages, forceScrollBottom) {
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return;
+    }
+
+    var wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 80;
+    var appendedAny = false;
+
+    messages.forEach(function (m) {
+      var msgId = Number(m.message_id);
+      if (!msgId || state.renderedIds.has(msgId)) return;
+
+      state.renderedIds.add(msgId);
+      if (msgId > state.lastMessageId) {
+        state.lastMessageId = msgId;
+      }
+
+      var row = document.createElement('div');
+      row.className = 'r2msg-row ' + (m.is_mine ? 'is-mine' : 'is-theirs');
+      row.setAttribute('data-msg-id', String(msgId));
+
+      var bubble = document.createElement('div');
+      bubble.className = 'r2msg-bubble ' + (m.is_mine ? 'is-mine' : 'is-theirs');
+      bubble.textContent = m.message_text || '';
+
+      var meta = document.createElement('div');
+      meta.className = 'r2msg-meta';
+
+      var timeSpan = document.createElement('span');
+      timeSpan.textContent = formatTimestamp(m.created_at);
+      meta.appendChild(timeSpan);
+
+      if (m.is_mine) {
+        var readSpan = document.createElement('span');
+        readSpan.className = 'r2msg-read-status';
+        readSpan.textContent = m.is_read ? '· Read' : '· Sent';
+        meta.appendChild(readSpan);
+      }
+
+      row.appendChild(bubble);
+      row.appendChild(meta);
+      messagesEl.appendChild(row);
+      appendedAny = true;
+    });
+
+    if (state.renderedIds.size > 0 && threadEmptyEl) {
+      threadEmptyEl.classList.add('d-none');
+    }
+
+    if (appendedAny && (forceScrollBottom || wasNearBottom)) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+  }
+
+  function applyReadReceipts(readOwnIds) {
+    if (!Array.isArray(readOwnIds) || readOwnIds.length === 0) return;
+    var readSet = new Set(readOwnIds.map(Number));
+    var ownRows = messagesEl.querySelectorAll('.r2msg-row.is-mine');
+    ownRows.forEach(function (row) {
+      var msgId = Number(row.getAttribute('data-msg-id'));
+      if (readSet.has(msgId)) {
+        var statusEl = row.querySelector('.r2msg-read-status');
+        if (statusEl && statusEl.textContent !== '· Read') {
+          statusEl.textContent = '· Read';
+        }
+      }
+    });
+  }
+
+  function markSidebarConversationRead(convId) {
+    var row = listEl.querySelector('.r2msg-conv-item[data-conv-id="' + convId + '"]');
+    if (!row) return;
+    row.classList.remove('has-unread');
+    var dot = row.querySelector('.r2msg-unread-dot');
+    if (dot) dot.classList.add('d-none');
+    var badge = row.querySelector('.r2msg-unread-badge');
+    if (badge) {
+      badge.textContent = '0';
+      badge.classList.add('d-none');
+    }
+  }
+
+  function updateSidebarPreview(convId, previewText, timeIso) {
+    var row = listEl.querySelector('.r2msg-conv-item[data-conv-id="' + convId + '"]');
+    if (!row) return;
+    var prevEl = row.querySelector('.r2msg-conv-preview');
+    if (prevEl && previewText) {
+      prevEl.textContent = previewText;
+    }
+    var timeEl = row.querySelector('.r2msg-conv-time');
+    if (timeEl && timeIso) {
+      timeEl.setAttribute('data-iso-time', timeIso);
+      timeEl.textContent = formatTimestamp(timeIso);
+    }
+    if (listEl.firstElementChild !== row) {
+      listEl.insertBefore(row, listEl.firstElementChild);
+    }
+  }
+
+  function setSidebarActive(convId) {
+    var items = listEl.querySelectorAll('.r2msg-conv-item');
+    items.forEach(function (btn) {
+      if (Number(btn.getAttribute('data-conv-id')) === Number(convId)) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
+  }
+
+  async function pollNewMessages(gen) {
+    if (gen !== state.pollGen || !state.activeConvId) return;
+    if (document.visibilityState === 'hidden') return;
+
+    var convId = state.activeConvId;
+    var afterId = state.lastMessageId || 0;
+
+    try {
+      var res = await fetch('/api/conversations/' + convId + '/messages?after_id=' + afterId, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      if (gen !== state.pollGen || state.activeConvId !== convId) return;
+
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      if (!res.ok) {
+        scheduleNextPoll(gen);
+        return;
+      }
+
+      var data = await res.json();
+      if (gen !== state.pollGen || state.activeConvId !== convId) return;
+
+      if (data && data.success) {
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          appendMessages(data.messages, false);
+          var newest = data.messages[data.messages.length - 1];
+          var preview = newest.is_mine ? ('You: ' + newest.message_text) : newest.message_text;
+          updateSidebarPreview(convId, preview, newest.created_at);
+        }
+        applyReadReceipts(data.read_own_ids);
+        markSidebarConversationRead(convId);
+        if (typeof data.total_unread !== 'undefined') {
+          updateGlobalUnreadBadges(data.total_unread);
+        }
+      }
+    } catch (err) {
+      // Quietly retry on next poll interval without interrupting user typing
+    } finally {
+      if (gen === state.pollGen && state.activeConvId === convId) {
+        scheduleNextPoll(gen);
+      }
+    }
+  }
+
+  async function openConversation(convId, pushUrl) {
+    var targetId = Number(convId);
+    if (!targetId) return;
+
+    stopPolling();
+    var myGen = state.pollGen;
+    state.activeConvId = targetId;
+    state.failedSendText = '';
+    state.failedClientMsgId = null;
+    hideError();
+
+    shellEl.classList.add('is-chat-open');
+    placeholderEl.classList.add('d-none');
+    activeViewEl.classList.remove('d-none');
+    setSidebarActive(targetId);
+
+    clearRenderedMessages();
+    threadEmptyEl.classList.add('d-none');
+    loadingEl.classList.remove('d-none');
+
+    var cachedConv = state.conversations.find(function (c) {
+      return Number(c.conversation_id) === targetId;
+    });
+    if (cachedConv) {
+      renderHeaderAndListing(cachedConv);
+    }
+
+    if (pushUrl !== false && window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', '/inbox?c=' + targetId);
+    }
+
+    try {
+      var res = await fetch('/api/conversations/' + targetId + '/messages?after_id=0', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      if (myGen !== state.pollGen) return;
+
+      loadingEl.classList.add('d-none');
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+      var data = await res.json();
+      if (!res.ok || !data || !data.success) {
+        showError((data && data.message) || 'Could not load messages.', false);
+        return;
+      }
+
+      renderHeaderAndListing(data.conversation);
+      if (Array.isArray(data.messages) && data.messages.length > 0) {
+        appendMessages(data.messages, true);
+      } else {
+        threadEmptyEl.classList.remove('d-none');
+      }
+      applyReadReceipts(data.read_own_ids);
+      markSidebarConversationRead(targetId);
+      if (typeof data.total_unread !== 'undefined') {
+        updateGlobalUnreadBadges(data.total_unread);
+      }
+
+      scheduleNextPoll(myGen);
+    } catch (err) {
+      if (myGen !== state.pollGen) return;
+      loadingEl.classList.add('d-none');
+      showError('Network error while loading conversation. Please try selecting it again.', false);
+    }
+  }
+
+  async function sendMessage(textOverride, clientMsgIdOverride) {
+    if (!state.activeConvId || state.isSending) return;
+
+    var text = typeof textOverride === 'string' ? textOverride : inputEl.value;
+    var trimmed = (text || '').trim();
+    if (!trimmed) {
+      showError('Please enter a message before sending.', false);
+      inputEl.focus();
+      return;
+    }
+    if (trimmed.length > MAX_LENGTH) {
+      showError('Message exceeds the ' + MAX_LENGTH + ' character limit.', false);
+      return;
+    }
+
+    var convId = state.activeConvId;
+    var clientMsgId = clientMsgIdOverride || state.failedClientMsgId || makeClientMsgId();
+    state.isSending = true;
+    sendBtnEl.disabled = true;
+    hideError();
+
+    try {
+      var res = await fetch('/api/conversations/' + convId + '/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          message_text: trimmed,
+          client_msg_id: clientMsgId
+        })
+      });
+
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
+
+      var data = await res.json();
+      if (!res.ok || !data || !data.success || !data.message) {
+        state.failedSendText = trimmed;
+        state.failedClientMsgId = clientMsgId;
+        showError((data && data.message) || 'Failed to send message. Please retry.', true);
+        return;
+      }
+
+      state.failedSendText = '';
+      state.failedClientMsgId = null;
+      if (state.activeConvId === convId) {
+        appendMessages([data.message], true);
+        updateSidebarPreview(convId, 'You: ' + data.message.message_text, data.message.created_at);
+        if (typeof data.total_unread !== 'undefined') {
+          updateGlobalUnreadBadges(data.total_unread);
+        }
+      }
+      inputEl.value = '';
+      inputEl.style.height = '44px';
+      charCountEl.textContent = '0 / ' + MAX_LENGTH;
+      inputEl.focus();
+    } catch (err) {
+      state.failedSendText = trimmed;
+      state.failedClientMsgId = clientMsgId;
+      showError('Network error sending message. Your text is preserved — click Retry.', true);
+    } finally {
+      state.isSending = false;
+      sendBtnEl.disabled = false;
+    }
+  }
+
+  // Sidebar click delegation
+  listEl.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.r2msg-conv-item');
+    if (!btn) return;
+    var convId = btn.getAttribute('data-conv-id');
+    if (convId) {
+      openConversation(convId, true);
+    }
+  });
+
+  // Search filter
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      var q = (searchEl.value || '').trim().toLowerCase();
+      var items = listEl.querySelectorAll('.r2msg-conv-item');
+      items.forEach(function (btn) {
+        var hay = btn.getAttribute('data-search') || '';
+        btn.style.display = (!q || hay.indexOf(q) !== -1) ? '' : 'none';
+      });
+    });
+  }
+
+  // Mobile back button stops polling cleanly
+  if (backBtn) {
+    backBtn.addEventListener('click', function () {
+      stopPolling();
+      state.activeConvId = null;
+      shellEl.classList.remove('is-chat-open');
+      setSidebarActive(null);
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '/inbox');
+      }
+    });
+  }
+
+  // Composer submit + auto-grow + Enter-to-send
+  sendFormEl.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    sendMessage();
+  });
+
+  inputEl.addEventListener('input', function () {
+    var len = inputEl.value.length;
+    charCountEl.textContent = len + ' / ' + MAX_LENGTH;
+    inputEl.style.height = '44px';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  inputEl.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && !ev.shiftKey) {
+      ev.preventDefault();
+      sendMessage();
+    }
+  });
+
+  if (retryBtnEl) {
+    retryBtnEl.addEventListener('click', function () {
+      var retryText = state.failedSendText || inputEl.value;
+      sendMessage(retryText, state.failedClientMsgId);
+    });
+  }
+
+  // Pause polling when tab is hidden; resume cleanly when visible again
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      if (state.pollTimer) {
+        clearTimeout(state.pollTimer);
+        state.pollTimer = null;
+      }
+    } else if (document.visibilityState === 'visible' && state.activeConvId) {
+      var resumeGen = state.pollGen;
+      pollNewMessages(resumeGen);
+    }
+  });
+
+  window.addEventListener('pagehide', stopPolling);
+  window.addEventListener('beforeunload', stopPolling);
+
+  formatSidebarTimes();
+
+  if (state.activeConvId) {
+    openConversation(state.activeConvId, false);
+  }
+})();
+</script>
+{% endblock %}

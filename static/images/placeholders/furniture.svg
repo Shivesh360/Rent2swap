@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_furniture" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="180" fill="url(#grad_furniture)" />
+  <g transform="translate(0, -5)">
+    <rect x="50" y="60" width="100" height="55" rx="8" fill="#fbbf24"/><rect x="40" y="90" width="120" height="35" rx="6" fill="#b45309"/><rect x="50" y="125" width="8" height="30" rx="3" fill="#78350f"/><rect x="142" y="125" width="8" height="30" rx="3" fill="#78350f"/>
+  </g>
+  <text x="100" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">Furniture & Decor</text>
+</svg>

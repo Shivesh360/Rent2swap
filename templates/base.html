@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Rent2Swap - Student Rental & Swap Marketplace{% endblock %}</title>
+  <script>
+    (function() {
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var csrfToken = meta ? meta.getAttribute('content') : '';
+      if (!csrfToken) return;
+      function isSameOriginUrl(urlStr) {
+        if (!urlStr) return true;
+        try {
+          var parsed = new URL(urlStr, window.location.href);
+          return parsed.origin === window.location.origin;
+        } catch (e) {
+          return false;
+        }
+      }
+      function isMutatingMethod(method) {
+        var m = (method || 'GET').toUpperCase();
+        return m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE';
+      }
+      if (window.fetch) {
+        var origFetch = window.fetch;
+        window.fetch = function(input, init) {
+          init = init ? Object.assign({}, init) : {};
+          var reqUrl = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+          var method = init.method || (typeof input !== 'string' && input && input.method ? input.method : 'GET');
+          if (isSameOriginUrl(reqUrl) && isMutatingMethod(method)) {
+            var headers = new Headers(init.headers || (typeof input !== 'string' && input && input.headers ? input.headers : undefined));
+            if (!headers.has('X-CSRFToken')) {
+              headers.set('X-CSRFToken', csrfToken);
+            }
+            init.headers = headers;
+          }
+          return origFetch.call(this, input, init);
+        };
+      }
+      if (window.XMLHttpRequest && XMLHttpRequest.prototype) {
+        var origOpen = XMLHttpRequest.prototype.open;
+        var origSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method, url) {
+          this._r2sMethod = method;
+          this._r2sUrl = url;
+          return origOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function() {
+          if (isSameOriginUrl(this._r2sUrl) && isMutatingMethod(this._r2sMethod)) {
+            try { this.setRequestHeader('X-CSRFToken', csrfToken); } catch (e) {}
+          }
+          return origSend.apply(this, arguments);
+        };
+      }
+    })();
+  </script>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Rent2Swap Design System Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/rent2swap-theme.css') }}">
+  <!-- Custom Project CSS (Overrides & Page Styles) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Anti-Flash Theme Initializer -->
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('r2s-theme');
+        var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        var theme = savedTheme ? savedTheme : (prefersLight ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- Rent2Swap Navigation Bar -->
+  <nav class="navbar navbar-expand-lg r2s-navbar sticky-top" id="main-nav">
+    <div class="container">
+      <a class="navbar-brand r2s-brand" href="{{ url_for('home') }}" id="brand-link">
+        <span class="r2s-brand-logo-icon">
+          <i class="bi bi-arrow-left-right"></i>
+        </span>
+        <span>Rent<span class="r2s-brand-swap">2Swap</span></span>
+        <span class="r2s-badge-campus ms-1 d-none d-sm-inline-flex align-items-center">
+          <i class="bi bi-shield-check me-1"></i>Campus
+        </span>
+      </a>
+
+      <div class="d-flex align-items-center gap-2 ms-auto order-2 order-lg-3 r2s-navbar-actions" id="r2s-navbar-actions">
+        <!-- Dark / Light Mode Switch Button -->
+        <button class="btn btn-sm r2s-theme-toggle" type="button" id="theme-toggle-btn" aria-label="Switch to Light Mode" title="Switch Theme">
+          <i class="bi bi-sun-fill theme-icon-sun d-none"></i>
+          <i class="bi bi-moon-stars-fill theme-icon-moon"></i>
+        </button>
+
+        <!-- Post Listing Button (Desktop Top Bar) -->
+        <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary text-decoration-none text-nowrap d-none d-lg-inline-flex" id="btn-post-ad">
+          <i class="bi bi-plus-circle-fill"></i>
+          <span>Post Listing</span>
+        </a>
+
+        {% if session.get('user_id') %}
+          {% set _user_name = session.get('user_name') or (current_user_profile.name if current_user_profile else 'Student User') %}
+          {% set _user_email = session.get('user_email') or (current_user_profile.email if current_user_profile else '') %}
+          {% set _user_initial = (_user_name | trim)[0] | upper if (_user_name | trim) else '' %}
+          <!-- Authenticated User Circular Profile Avatar & Dropdown -->
+          <div class="dropdown r2s-profile-dropdown" id="user-profile-dropdown">
+            <button
+              class="btn r2s-profile-btn"
+              type="button"
+              data-bs-toggle="dropdown"
+              data-bs-offset="0,10"
+              data-bs-display="dynamic"
+              aria-expanded="false"
+              id="user-menu-btn"
+              title="{{ _user_name }}"
+              aria-label="Account menu for {{ _user_name }}">
+              {% if _user_initial %}
+                <span class="r2s-avatar-initial">{{ _user_initial }}</span>
+              {% else %}
+                <i class="bi bi-person-fill"></i>
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-lg r2s-profile-dropdown-menu" aria-labelledby="user-menu-btn">
+              <li class="r2s-dropdown-header px-3 py-2 border-bottom border-secondary border-opacity-25 mb-1">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="r2s-dropdown-avatar">
+                    {% if _user_initial %}
+                      <span class="fw-bold">{{ _user_initial }}</span>
+                    {% else %}
+                      <i class="bi bi-person-fill"></i>
+                    {% endif %}
+                  </div>
+                  <div class="overflow-hidden">
+                    <div class="fw-bold text-truncate r2s-dropdown-name">
+                      {{ _user_name }}
+                    </div>
+                    <div class="text-truncate r2s-dropdown-email small">
+                      {{ _user_email or 'Campus Account' }}
+                    </div>
+                  </div>
+                </div>
+                {% if session.get('is_verified') %}
+                  <div class="mt-2 d-inline-flex align-items-center gap-1 badge-r2s badge-r2s-verified" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;">
+                    <i class="bi bi-patch-check-fill"></i> Verified Student
+                  </div>
+                {% endif %}
+              </li>
+              {% if session.get('is_admin') %}
+                <li>
+                  <a class="dropdown-item d-flex align-items-center gap-2 text-warning fw-semibold" href="{{ url_for('admin_dashboard') }}" id="menu-admin">
+                    <i class="bi bi-shield-lock-fill text-warning"></i>
+                    <span>Admin Center</span>
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider my-1"></li>
+              {% endif %}
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('profile') }}" id="menu-profile">
+                  <i class="bi bi-person-circle"></i>
+                  <span>My Profile</span>
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('my_listings') }}" id="menu-my-listings">
+                  <i class="bi bi-box-seam"></i>
+                  <span>My Listings</span>
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('inbox') }}" id="menu-inbox">
+                  <i class="bi bi-chat-dots"></i>
+                  <span>Inbox</span>
+                  <span class="r2msg-nav-badge ms-auto {% if (unread_messages_count or 0) == 0 %}d-none{% endif %}">{{ unread_messages_count or 0 }}</span>
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('my_requests') }}" id="menu-my-rentals">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span>My Rentals</span>
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('profile') }}#security-settings" id="menu-settings">
+                  <i class="bi bi-gear"></i>
+                  <span>Settings</span>
+                </a>
+              </li>
+              <li><hr class="dropdown-divider my-1"></li>
+              <li>
+                <form method="POST" action="{{ url_for('logout') }}" class="m-0 p-0" id="logout-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="dropdown-item r2s-logout-item d-flex align-items-center gap-2 w-100 text-start border-0" id="menu-logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <!-- Guest Controls (Desktop Top Bar) -->
+          <a href="{{ url_for('login') }}" class="btn btn-sm btn-r2s-outline text-nowrap d-none d-lg-inline-flex" id="btn-login">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+          </a>
+          <a href="{{ url_for('register') }}" class="btn btn-sm btn-r2s-primary text-nowrap d-none d-lg-inline-flex" id="btn-register">
+            <i class="bi bi-person-plus me-1"></i>Register
+          </a>
+        {% endif %}
+
+        <button class="navbar-toggler border-0 text-white ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation" id="navbar-toggle-btn">
+          <i class="bi bi-list fs-2"></i>
+        </button>
+      </div>
+
+      <div class="collapse navbar-collapse order-3 order-lg-2" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
+          <li class="nav-item">
+            <a class="nav-link r2s-nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}" id="nav-home">
+              <i class="bi bi-house-door"></i>Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link r2s-nav-link {% if request.endpoint == 'marketplace' %}active{% endif %}" href="{{ url_for('marketplace') }}" id="nav-marketplace">
+              <i class="bi bi-grid"></i>Marketplace
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link r2s-nav-link {% if request.endpoint == 'ai_search' %}active{% endif %}" href="{{ url_for('ai_search') }}" id="nav-ai-search">
+              <i class="bi bi-stars text-warning"></i>Smart Search
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link r2s-nav-link {% if request.endpoint == 'ai_matching' %}active{% endif %}" href="{{ url_for('ai_matching') }}" id="nav-ai-matching">
+              <i class="bi bi-arrow-left-right text-info"></i>Smart Matching
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link r2s-nav-link {% if request.endpoint == 'ai_recommendations' %}active{% endif %}" href="{{ url_for('ai_recommendations') }}" id="nav-ai-recs">
+              <i class="bi bi-magic text-primary-light"></i>Recommendations
+            </a>
+          </li>
+          {% if session.get('user_id') %}
+            <li class="nav-item">
+              <a class="nav-link r2s-nav-link {% if request.endpoint == 'inbox' %}active{% endif %}" href="{{ url_for('inbox') }}" id="nav-inbox">
+                <i class="bi bi-chat-dots"></i>Inbox<span class="r2msg-nav-badge {% if (unread_messages_count or 0) == 0 %}d-none{% endif %}" id="nav-inbox-badge">{{ unread_messages_count or 0 }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link r2s-nav-link {% if request.endpoint == 'my_requests' %}active{% endif %}" href="{{ url_for('my_requests') }}" id="nav-my-requests">
+                <i class="bi bi-arrow-repeat"></i>Requests
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link r2s-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}" id="nav-dashboard">
+                <i class="bi bi-speedometer2"></i>Dashboard
+              </a>
+            </li>
+          {% endif %}
+          {% if session.get('is_admin') %}
+            <li class="nav-item">
+              <a class="nav-link r2s-nav-link text-warning {% if request.endpoint and request.endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}" id="nav-admin">
+                <i class="bi bi-shield-lock-fill text-warning"></i>Admin
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+
+        <!-- Mobile Hamburger Drawer Actions & Account Access (< 992px) -->
+        <div class="d-lg-none pt-3 mt-2 border-top border-secondary border-opacity-25">
+          <a href="{{ url_for('add_listing') }}" class="btn btn-r2s-primary w-100 justify-content-center mb-3 text-decoration-none" id="mobile-btn-post-ad">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>Post Listing</span>
+          </a>
+
+          {% if session.get('user_id') %}
+            {% set _mob_name = session.get('user_name') or (current_user_profile.name if current_user_profile else 'Student User') %}
+            {% set _mob_email = session.get('user_email') or (current_user_profile.email if current_user_profile else '') %}
+            {% set _mob_initial = (_mob_name | trim)[0] | upper if (_mob_name | trim) else '' %}
+            <div class="r2s-mobile-account-card p-3 mb-2" id="mobile-account-section">
+              <div class="d-flex align-items-center gap-2 mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                <div class="r2s-dropdown-avatar">
+                  {% if _mob_initial %}
+                    <span class="fw-bold">{{ _mob_initial }}</span>
+                  {% else %}
+                    <i class="bi bi-person-fill"></i>
+                  {% endif %}
+                </div>
+                <div class="overflow-hidden">
+                  <div class="fw-bold text-truncate r2s-dropdown-name">{{ _mob_name }}</div>
+                  <div class="text-truncate r2s-dropdown-email small">{{ _mob_email or 'Campus Account' }}</div>
+                </div>
+              </div>
+              <div class="d-grid gap-1">
+                <a class="r2s-mobile-account-link" href="{{ url_for('profile') }}" id="mobile-menu-profile">
+                  <i class="bi bi-person-circle"></i><span>My Profile</span>
+                </a>
+                <a class="r2s-mobile-account-link" href="{{ url_for('my_listings') }}" id="mobile-menu-listings">
+                  <i class="bi bi-box-seam"></i><span>My Listings</span>
+                </a>
+                <a class="r2s-mobile-account-link" href="{{ url_for('inbox') }}" id="mobile-menu-inbox">
+                  <i class="bi bi-chat-dots"></i><span>Inbox</span>
+                  <span class="r2msg-nav-badge ms-auto {% if (unread_messages_count or 0) == 0 %}d-none{% endif %}" id="mobile-nav-inbox-badge">{{ unread_messages_count or 0 }}</span>
+                </a>
+                <a class="r2s-mobile-account-link" href="{{ url_for('my_requests') }}" id="mobile-menu-rentals">
+                  <i class="bi bi-arrow-repeat"></i><span>My Rentals</span>
+                </a>
+                <a class="r2s-mobile-account-link" href="{{ url_for('profile') }}#security-settings" id="mobile-menu-settings">
+                  <i class="bi bi-gear"></i><span>Settings</span>
+                </a>
+                <hr class="dropdown-divider my-1">
+                <form method="POST" action="{{ url_for('logout') }}" class="m-0 p-0" id="mobile-logout-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="r2s-mobile-account-link r2s-logout-item w-100 text-start border-0" id="mobile-menu-logout">
+                    <i class="bi bi-box-arrow-right"></i><span>Logout</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          {% else %}
+            <div class="d-grid grid-2 gap-2" style="display: grid; grid-template-columns: 1fr 1fr;">
+              <a href="{{ url_for('login') }}" class="btn btn-sm btn-r2s-outline justify-content-center" id="mobile-btn-login">
+                <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+              </a>
+              <a href="{{ url_for('register') }}" class="btn btn-sm btn-r2s-primary justify-content-center" id="mobile-btn-register">
+                <i class="bi bi-person-plus me-1"></i>Register
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash Messages Area -->
+  <div class="container mt-3" id="alerts-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+            <div class="d-flex align-items-center gap-2">
+              {% if category == 'success' %}
+                <i class="bi bi-check-circle-fill text-success fs-5"></i>
+              {% elif category == 'danger' or category == 'error' %}
+                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+              {% elif category == 'warning' %}
+                <i class="bi bi-exclamation-circle-fill text-warning fs-5"></i>
+              {% else %}
+                <i class="bi bi-info-circle-fill text-info fs-5"></i>
+              {% endif %}
+              <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Dynamic Content -->
+  <main class="py-4" id="main-content">
+    {% block content %}
+      {% if error_title %}
+        <div class="container text-center py-5">
+          <div class="custom-card p-5 max-w-md mx-auto" style="max-width: 500px;">
+            <i class="bi bi-exclamation-circle text-warning display-4 mb-3 d-block"></i>
+            <h3 class="fw-bold">{{ error_title }}</h3>
+            <p class="text-muted">{{ error_msg }}</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary-custom mt-3">Return to Marketplace</a>
+          </div>
+        </div>
+      {% endif %}
+    {% endblock %}
+  </main>
+
+  <!-- Rent2Swap Commercial & Campus Footer -->
+  <footer class="r2s-footer mt-auto" id="site-footer">
+    <div class="container">
+      <div class="row g-4 mb-4">
+        <div class="col-lg-4 col-md-6">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="r2s-brand-logo-icon">
+              <i class="bi bi-arrow-left-right"></i>
+            </span>
+            <span class="fs-5 fw-bold text-white">Rent<span class="r2s-brand-swap">2Swap</span></span>
+          </div>
+          <p class="text-secondary small mb-3">
+            An intelligent campus & local student marketplace. Rent high-value equipment, buy and sell pre-owned items, or swap essentials with verified peers.
+          </p>
+          <div class="d-flex gap-2 flex-wrap">
+            <span class="badge-r2s badge-r2s-rent">Rent</span>
+            <span class="badge-r2s badge-r2s-swap">Swap</span>
+            <span class="badge-r2s badge-r2s-sell">Sell</span>
+            <span class="badge-r2s badge-r2s-verified"><i class="bi bi-shield-check me-1"></i>Verified</span>
+          </div>
+        </div>
+
+        <div class="col-lg-2 col-md-3 col-6">
+          <h6 class="fw-bold text-white mb-3">Marketplace</h6>
+          <ul class="list-unstyled small mb-0 d-flex flex-column gap-2">
+            <li><a href="{{ url_for('marketplace') }}" class="text-secondary text-decoration-none">All Listings</a></li>
+            <li><a href="{{ url_for('marketplace', type='Rent') }}" class="text-secondary text-decoration-none">Items for Rent</a></li>
+            <li><a href="{{ url_for('marketplace', type='Sell') }}" class="text-secondary text-decoration-none">Items for Sale</a></li>
+            <li><a href="{{ url_for('marketplace', type='Exchange') }}" class="text-secondary text-decoration-none">Exchange Hub</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3 col-md-3 col-6">
+          <h6 class="fw-bold text-white mb-3">Popular Categories</h6>
+          <ul class="list-unstyled small mb-0 d-flex flex-column gap-2">
+            <li><a href="{{ url_for('marketplace', category='Cameras') }}" class="text-secondary text-decoration-none">Cameras & Imaging</a></li>
+            <li><a href="{{ url_for('marketplace', category='Laptops') }}" class="text-secondary text-decoration-none">Laptops & Computers</a></li>
+            <li><a href="{{ url_for('marketplace', category='Gaming Devices') }}" class="text-secondary text-decoration-none">Gaming & Consoles</a></li>
+            <li><a href="{{ url_for('marketplace', category='Cycles') }}" class="text-secondary text-decoration-none">Cycles & Mobility</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3 col-md-12">
+          <h6 class="fw-bold text-white mb-3">Post Your Listing</h6>
+          <p class="text-secondary small mb-3">
+            Have textbooks, electronics, cycles, or gear lying idle? Rent, sell, or swap them securely on campus.
+          </p>
+          <a href="{{ url_for('add_listing') }}" class="btn btn-sm btn-r2s-primary w-100">
+            <i class="bi bi-plus-circle me-1"></i> List an Item Now
+          </a>
+        </div>
+      </div>
+
+      <div class="pt-3 border-top border-secondary border-opacity-25 d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted">
+        <div>
+          &copy; {{ now.year if now else '2026' }} <strong class="text-white">Rent2Swap</strong> &bull; Student Rental, Selling &amp; Exchange Marketplace
+        </div>
+        <div class="d-flex gap-3">
+          <span class="badge-r2s badge-r2s-verified"><i class="bi bi-lock-fill me-1"></i>Supabase PostgreSQL Connected</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Three.js WebGL Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Bootstrap 5 JS Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <!-- Flowing Blurred 3D Aurora Wave Background -->
+  <script src="{{ url_for('static', filename='js/aurora-wave.js') }}"></script>
+  <!-- Custom Project JavaScript -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <!-- Page-Specific Script Injection Hook -->
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
